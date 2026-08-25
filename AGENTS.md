@@ -1,5 +1,9 @@
 # AGENTS.md
 
+## Project Overview
+
+This proect implements a multi-tenant Retrieval-Augmented Generation (RAG) platform that enables users to upload documents, ask queries, and receive streaming answers with precise source citations.
+
 ## Engineering Principles
 
 - Prefer the smallest change that correctly solves the requested problem.
