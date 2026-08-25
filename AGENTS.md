@@ -1,5 +1,9 @@
 # AGENTS.md
 
+## Project Overview
+
+This proect implements a multi-tenant Retrieval-Augmented Generation (RAG) platform that enables users to upload documents, ask queries, and receive streaming answers with precise source citations.
+
 ## Engineering Principles
 
 - Prefer the smallest change that correctly solves the requested problem.
@@ -20,6 +24,7 @@
 - Do not put business logic in controllers.
 - Keep external services behind explicit interfaces or adapters when the existing architecture uses them.
 - Do not introduce a new architectural pattern unless the existing design cannot reasonably support the requirement.
+- Model registry lives in `app/models/__init__.py`. Do NOT import models into `app/db/base.py`: importing models there creates a circular import at app startup (`app.main -> app.api.* -> app.models.* -> app.db.base -> app.models.*` fails because the target class is still partially defined).
 
 ## Dependencies
 

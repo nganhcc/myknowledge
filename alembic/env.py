@@ -6,15 +6,16 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+from app import models  # noqa: F401  (đăng ký metadata cho Alembic autogenerate)
 from app.core.config import settings
+from app.db.base import Base
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = None
-
+target_metadata = Base.metadata
 
 def do_run_migrations(connection: Connection) -> None:
     context.configure(
