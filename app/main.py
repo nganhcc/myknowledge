@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 import structlog
 from fastapi import FastAPI
 
+from app.api.v1 import auth
 from app.core.logging import setup_logging
 
 # Khởi tạo structlog logger
@@ -22,6 +23,8 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+app.include_router(auth.router)
 
 
 @app.get("/health", tags=["Health Check"])
