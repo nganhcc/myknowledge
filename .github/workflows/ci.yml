@@ -10,6 +10,25 @@ jobs:
     name: Lint, Type check, Test, Build
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: knowledge_base
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      SECRET_KEY: ci-secret-key-for-hs256-at-least-32-bytes
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/knowledge_base_test
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
