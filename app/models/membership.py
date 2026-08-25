@@ -1,9 +1,12 @@
-from datetime import datetime, timezone
 import enum
 import uuid
-from sqlalchemy import ForeignKey, String, Enum, DateTime
+from datetime import UTC, datetime
+
+from sqlalchemy import DateTime, Enum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.base import Base
+
 
 class WorkspaceRole(str, enum.Enum):
     OWNER = "OWNER"
@@ -23,7 +26,7 @@ class WorkspaceMember(Base):
         Enum(WorkspaceRole), default=WorkspaceRole.MEMBER, nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
     user = relationship("User", back_populates="memberships")
