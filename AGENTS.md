@@ -24,6 +24,7 @@ This proect implements a multi-tenant Retrieval-Augmented Generation (RAG) platf
 - Do not put business logic in controllers.
 - Keep external services behind explicit interfaces or adapters when the existing architecture uses them.
 - Do not introduce a new architectural pattern unless the existing design cannot reasonably support the requirement.
+- Model registry lives in `app/models/__init__.py`. Do NOT import models into `app/db/base.py`: importing models there creates a circular import at app startup (`app.main -> app.api.* -> app.models.* -> app.db.base -> app.models.*` fails because the target class is still partially defined).
 
 ## Dependencies
 
