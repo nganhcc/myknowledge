@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class Settings(BaseSettings):
     app_name: str = "AI Knowledge Base"
     environment: str = "development"
@@ -15,4 +16,4 @@ class Settings(BaseSettings):
     )
 # Sau, tat ca services se lay config tu: from app.core.config import settings
 
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]
