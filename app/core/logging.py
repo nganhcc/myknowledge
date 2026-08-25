@@ -18,6 +18,7 @@ def setup_logging(json_logs: bool = False) -> None:
         structlog.processors.format_exc_info,     # Format exception traceback nếu có
     ]
 
+    render_processor: structlog.processors.JSONRenderer | structlog.dev.ConsoleRenderer
     if json_logs:
         # Trong Production: Xuất định dạng JSON hoàn chỉnh (phù hợp cho Datadog, ELK, Vector)
         render_processor = structlog.processors.JSONRenderer()
