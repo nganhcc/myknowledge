@@ -50,5 +50,13 @@ def setup_logging(json_logs: bool = False) -> None:
     handler.setFormatter(formatter)
 
     root_logger = logging.getLogger()
-    root_logger.addHandler(handler)
+    # Nếu setup_logging được gọi lại (ví dụ lifespan restart), chỉ cập nhật
+    # formatter của handler structlog có sẵn thay vì thêm handler mới,
+    # tránh log bị in trùng dòng.
+    has_structlog_handler = any(
+        isinstance(h.formatter, structlog.stdlib.ProcessorFormatter)
+        for h in root_logger.handlers
+    )
+    if not has_structlog_handler:
+        root_logger.addHandler(handler)
     root_logger.setLevel(logging.INFO)
