@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/knowledge_base"
     redis_url: str = "redis://localhost:6379/0"
 
+    gemini_api_key: str | None = None
+    gemini_embedding_model: str = "text-embedding-004"
+
     secret_key: str
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
