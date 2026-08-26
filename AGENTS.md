@@ -24,7 +24,6 @@ This proect implements a multi-tenant Retrieval-Augmented Generation (RAG) platf
 - Do not put business logic in controllers.
 - Keep external services behind explicit interfaces or adapters when the existing architecture uses them.
 - Do not introduce a new architectural pattern unless the existing design cannot reasonably support the requirement.
-- Model registry lives in `app/models/__init__.py`. Do NOT import models into `app/db/base.py`: importing models there creates a circular import at app startup (`app.main -> app.api.* -> app.models.* -> app.db.base -> app.models.*` fails because the target class is still partially defined).
 
 ## Dependencies
 
@@ -55,3 +54,9 @@ When working on the project:
 - Never retry failures blindly. Read the failure evidence first.
 - Fix the root cause instead of masking or weakening tests.
 - Never weaken tests just to make CI green.
+
+## Gotchas
+
+- Model registry lives in `app/models/__init__.py`. Do NOT import models into `app/db/base.py`: importing models there creates a circular import at app startup (`app.main -> app.api.* -> app.models.* -> app.db.base -> app.models.*` fails because the target class is still partially defined).
+- `settings = Settings()  # type: ignore[call-arg]` in `app/core/config.py` looks removable but is NOT: `secret_key` has no default, yet pydantic-settings does not surface it in the `__init__` signature that mypy sees. Removing the ignore causes mypy error "Missing named argument secret_key". Verified empirically — keep the ignore.
+- Tests require Postgres running locally (`docker compose up -d postgres`); without it pytest dies with INTERNALERROR from asyncpg connection refused on :5432.

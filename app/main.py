@@ -3,7 +3,8 @@ from contextlib import asynccontextmanager
 import structlog
 from fastapi import FastAPI
 
-from app.api.v1 import auth
+from app.api.v1 import auth, workspaces
+from app.core.config import settings
 from app.core.logging import setup_logging
 
 # Khởi tạo structlog logger
@@ -12,9 +13,9 @@ logger = structlog.get_logger()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Setup logging ngay khi app bắt đầu
-    setup_logging(json_logs=False)  # Để True nếu muốn dạng JSON
-    logger.info("application_started", env="development", version="0.1.0")
+    # Setup logging ngay khi app bắt đầu; JSON log khi chạy production
+    setup_logging(json_logs=settings.environment == "production")
+    logger.info("application_started", env=settings.environment, version=app.version)
     yield
 
 
@@ -25,6 +26,7 @@ app = FastAPI(
 )
 
 app.include_router(auth.router)
+app.include_router(workspaces.router)
 
 
 @app.get("/health", tags=["Health Check"])

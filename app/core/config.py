@@ -19,7 +19,9 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
-# Sau, tat ca services se lay config tu: from app.core.config import settings
 
-# pydantic-settings nạp secret_key từ env (SECRET_KEY), mypy không biết điều này
+
 settings = Settings()  # type: ignore[call-arg]
+# ignore[call-arg] là BẮT BUỘC: secret_key bắt buộc lúc runtime nhưng
+# pydantic-settings không đưa vào signature mà mypy nhìn thấy.
+# Đừng bỏ ignore này — đã thử và bị mypy báo "Missing named argument".

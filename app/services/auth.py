@@ -1,4 +1,5 @@
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password, verify_password
@@ -25,7 +26,14 @@ async def register_user(db: AsyncSession, payload: UserCreate) -> User:
         name=payload.name,
     )
     db.add(user)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # Unique constraint trên users.email là lớp bảo vệ cuối chống race
+        # condition: hai request đăng ký cùng email đồng thời đều pass bước
+        # SELECT ở trên, request commit sau sẽ vi phạm unique constraint.
+        await db.rollback()
+        raise EmailAlreadyRegisteredError(payload.email) from None
     await db.refresh(user)
     return user
 

@@ -20,14 +20,19 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(
     subject: str | Any, expires_delta: timedelta | None = None
 ) -> str:
+    issued_at = datetime.now(UTC)
     if expires_delta:
-        expire = datetime.now(UTC) + expires_delta
+        expire = issued_at + expires_delta
     else:
-        expire = datetime.now(UTC) + timedelta(
-            minutes=settings.access_token_expire_minutes
-        )
+        expire = issued_at + timedelta(minutes=settings.access_token_expire_minutes)
 
-    to_encode = {"exp": expire, "sub": str(subject)}
+    to_encode = {
+        "exp": expire,
+        "iat": issued_at,
+        "sub": str(subject),
+        # Phân biệt loại token để về sau không nhầm refresh token với access token
+        "type": "access",
+    }
     encoded_jwt = jwt.encode(
         to_encode, settings.secret_key, algorithm=settings.algorithm
     )
