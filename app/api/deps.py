@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.user import User
+from app.services.storage import BaseStorageService, LocalStorageService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.api_v1_prefix}/auth/login")
 
@@ -36,3 +37,8 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
     return user
+
+
+def get_storage_service() -> BaseStorageService:
+    """Cung cấp instance StorageService cho API."""
+    return LocalStorageService()
