@@ -6,8 +6,15 @@ services:
     env_file:
       - .env
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Chạy migration trước khi start server để schema luôn đồng bộ với code
+    command: >-
+      sh -c "uv run --no-dev alembic upgrade head
+      && uv run --no-dev uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
   postgres:
     image: pgvector/pgvector:pg16
     environment:
@@ -18,11 +25,21 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d knowledge_base"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
 volumes:
   postgres_data:
