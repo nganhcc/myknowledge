@@ -2,6 +2,7 @@ import hashlib
 import uuid
 from collections.abc import Sequence
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -135,3 +136,71 @@ async def delete_document(
     await storage.delete_file(doc.storage_key)
     await db.delete(doc)
     await db.commit()
+
+
+async def process_document(
+    db: AsyncSession,
+    storage: BaseStorageService,
+    document_id: uuid.UUID,
+) -> None:
+    """Quy trình xử lý tài liệu: đọc, parse, chunk, tạo embedding và lưu trữ."""
+    logger = structlog.get_logger()
+    
+    doc = await db.get(Document, document_id)
+    if doc is None:
+        raise DocumentNotFoundError(f"Document {document_id} not found")
+
+    if doc.status != DocumentStatus.PENDING:
+        logger.info("document_process_skipped", document_id=document_id, status=doc.status)
+        return
+
+    doc.status = DocumentStatus.PROCESSING
+    await db.commit()
+    await db.refresh(doc)
+
+    try:
+        # 1. Đọc nội dung tệp tin từ Storage
+        file_content = await storage.read_file(doc.storage_key)
+
+        # 2. Parse tài liệu tùy theo định dạng
+        from app.services.parser import get_parser
+        parser = get_parser(doc.mime_type, doc.filename)
+        parsed_pages = parser.parse(file_content)
+
+        # 3. Chia nhỏ văn bản (Chunking)
+        from app.services.chunker import chunk_document
+        chunks = chunk_document(parsed_pages)
+
+        # 4. Tạo embeddings & lưu
+        if chunks:
+            from app.services.embedder import embed_texts
+            texts = [c.content for c in chunks]
+            embeddings = await embed_texts(texts)
+
+            from app.models.chunk import DocumentChunk
+            db_chunks = [
+                DocumentChunk(
+                    document_id=doc.id,
+                    workspace_id=doc.workspace_id,
+                    chunk_index=c.chunk_index,
+                    content=c.content,
+                    token_count=c.token_count,
+                    page_number=c.page_number,
+                    metadata_=c.metadata,
+                    embedding=emb,
+                )
+                for c, emb in zip(chunks, embeddings)
+            ]
+            db.add_all(db_chunks)
+
+        # 5. Cập nhật trạng thái thành công
+        doc.status = DocumentStatus.READY
+        await db.commit()
+        logger.info("document_process_success", document_id=document_id)
+
+    except Exception as e:
+        logger.exception("document_process_failed", document_id=document_id, error=str(e))
+        doc.status = DocumentStatus.FAILED
+        await db.commit()
+        raise
+
