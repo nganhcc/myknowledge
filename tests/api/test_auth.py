@@ -71,6 +71,15 @@ async def test_register_invalid_payload_returns_422(client: AsyncClient) -> None
     assert response.status_code == 422
 
 
+async def test_register_invalid_email_returns_422(client: AsyncClient) -> None:
+    response = await client.post(
+        REGISTER_URL,
+        json={"email": "not-an-email", "password": VALID_PASSWORD, "name": "Test"},
+    )
+
+    assert response.status_code == 422
+
+
 async def test_login_returns_access_token(client: AsyncClient) -> None:
     await _register(client)
     response = await _login(client)
