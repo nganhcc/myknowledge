@@ -82,7 +82,7 @@ def test_get_parser() -> None:
 
 # 2. Test Chunker
 def test_chunker() -> None:
-    pages = [("word1 word2 word3 word4", 1), ("word5 word6", 2)]
+    pages: list[tuple[str, int | None]] = [("word1 word2 word3 word4", 1), ("word5 word6", 2)]
     # chunk_size=3, overlap=1
     chunks = chunk_document(pages, chunk_size=3, overlap=1)
     

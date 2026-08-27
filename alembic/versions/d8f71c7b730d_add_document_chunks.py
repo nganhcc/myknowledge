@@ -7,8 +7,8 @@ Create Date: 2026-08-26 18:00:02.840460
 """
 from collections.abc import Sequence
 
-import pgvector
 import sqlalchemy as sa
+from pgvector.sqlalchemy import VECTOR
 from sqlalchemy.dialects import postgresql
 
 from alembic import op
@@ -35,7 +35,7 @@ def upgrade() -> None:
     sa.Column('token_count', sa.Integer(), nullable=True),
     sa.Column('page_number', sa.Integer(), nullable=True),
     sa.Column('metadata', postgresql.JSONB(astext_type=sa.Text()), server_default='{}', nullable=False),
-    sa.Column('embedding', pgvector.sqlalchemy.VECTOR(dim=768), nullable=True),
+    sa.Column('embedding', VECTOR(dim=768), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['document_id'], ['documents.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['workspace_id'], ['workspaces.id'], ondelete='CASCADE'),
