@@ -255,9 +255,9 @@ async def test_process_document_retry_increments_count() -> None:
 @pytest.mark.asyncio
 async def test_process_document_permanently_fails_after_max_retries() -> None:
     async with async_session_factory() as db:
+        from app.core.config import settings
         from app.models.user import User
         from app.models.workspace import Workspace
-        from app.core.config import settings
 
         user = User(
             email="test_fail@example.com",
