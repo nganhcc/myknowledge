@@ -13,7 +13,7 @@ from app.api.deps import get_current_user, get_storage_service
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.document import DocumentResponse
+from app.schemas.document import DocumentResponse, DocumentStatusResponse
 from app.services import document as document_service
 from app.services import workspace as workspace_service
 from app.services.storage import BaseStorageService
@@ -130,6 +130,34 @@ async def get_document(
         raise _doc_not_found() from None
 
     return DocumentResponse.model_validate(doc)
+
+
+@router.get(
+    "/{workspace_id}/documents/{document_id}/status",
+    response_model=DocumentStatusResponse,
+)
+async def get_document_status(
+    workspace_id: uuid.UUID,
+    document_id: uuid.UUID,
+    current_user: UserDep,
+    db: DbDep,
+) -> DocumentStatusResponse:
+    try:
+        doc = await document_service.get_document(
+            db=db,
+            actor=current_user,
+            workspace_id=workspace_id,
+            document_id=document_id,
+        )
+    except (
+        workspace_service.WorkspaceNotFoundError,
+        workspace_service.NotWorkspaceMemberError,
+    ):
+        raise _ws_not_found() from None
+    except document_service.DocumentNotFoundError:
+        raise _doc_not_found() from None
+
+    return DocumentStatusResponse.model_validate(doc)
 
 
 @router.delete(

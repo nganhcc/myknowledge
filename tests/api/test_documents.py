@@ -293,3 +293,36 @@ async def test_delete_document_permissions(client: AsyncClient) -> None:
         headers=_auth(owner["token"]),
     )
     assert owner_del.status_code == 204
+
+
+async def test_document_status_endpoint(client: AsyncClient) -> None:
+    owner = await _new_user(client, "owner_status@example.com")
+    ws_id = await _create_ws(client, owner["token"])
+
+    # Upload document
+    response = await client.post(
+        f"{WS_URL}/{ws_id}/documents",
+        files={"file": ("test_status.txt", b"hello status", "text/plain")},
+        headers=_auth(owner["token"]),
+    )
+    assert response.status_code == 201
+    doc_id = response.json()["id"]
+
+    # Poll status
+    status_response = await client.get(
+        f"{WS_URL}/{ws_id}/documents/{doc_id}/status",
+        headers=_auth(owner["token"]),
+    )
+    assert status_response.status_code == 200
+    data = status_response.json()
+    assert data["id"] == doc_id
+    assert data["status"] == "PENDING"
+    assert data["retry_count"] == 0
+
+    # Bob (outsider) tries to poll status -> 404
+    bob = await _new_user(client, "bob_status@example.com")
+    status_response_bob = await client.get(
+        f"{WS_URL}/{ws_id}/documents/{doc_id}/status",
+        headers=_auth(bob["token"]),
+    )
+    assert status_response_bob.status_code == 404
