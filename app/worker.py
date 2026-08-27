@@ -63,7 +63,11 @@ async def worker_loop() -> None:
                     doc = await db.get(Document, document_id)
                     if doc and doc.status == DocumentStatus.PENDING:
                         await enqueue_document_processing(str(document_id))
-                        logger.info("worker_job_requeued", document_id=document_id, retry_count=doc.retry_count)
+                        logger.info(
+                            "worker_job_requeued",
+                            document_id=document_id,
+                            retry_count=doc.retry_count,
+                        )
 
                 logger.info("worker_job_completed", document_id=document_id)
         except asyncio.CancelledError:
@@ -83,7 +87,7 @@ if __name__ == "__main__":
     from app.core.logging import setup_logging
 
     setup_logging(json_logs=settings.environment == "production")
-    
+
     try:
         asyncio.run(worker_loop())
     except KeyboardInterrupt:

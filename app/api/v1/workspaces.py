@@ -43,9 +43,7 @@ def _forbidden() -> HTTPException:
     )
 
 
-@router.post(
-    "", response_model=WorkspaceResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("", response_model=WorkspaceResponse, status_code=status.HTTP_201_CREATED)
 async def create_workspace(
     payload: WorkspaceCreate, current_user: UserDep, db: DbDep
 ) -> WorkspaceResponse:
@@ -141,9 +139,7 @@ async def delete_workspace(
         raise _forbidden() from None
 
 
-@router.get(
-    "/{workspace_id}/members", response_model=list[MemberResponse]
-)
+@router.get("/{workspace_id}/members", response_model=list[MemberResponse])
 async def list_members(
     workspace_id: uuid.UUID, current_user: UserDep, db: DbDep
 ) -> list[MemberResponse]:
@@ -187,9 +183,7 @@ async def add_member(
         raise _forbidden() from None
 
 
-@router.patch(
-    "/{workspace_id}/members/{user_id}", response_model=MemberResponse
-)
+@router.patch("/{workspace_id}/members/{user_id}", response_model=MemberResponse)
 async def update_member_role(
     workspace_id: uuid.UUID,
     user_id: uuid.UUID,
@@ -237,7 +231,3 @@ async def remove_member(
         ) from None
     except workspace_service.WorkspaceForbiddenError:
         raise _forbidden() from None
-
-
-
-

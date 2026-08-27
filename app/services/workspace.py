@@ -74,14 +74,17 @@ async def _get_membership_role(
 
 
 async def _count_owners(db: AsyncSession, workspace_id: uuid.UUID) -> int:
-    return await db.scalar(
-        select(func.count())
-        .select_from(WorkspaceMember)
-        .where(
-            WorkspaceMember.workspace_id == workspace_id,
-            WorkspaceMember.role == WorkspaceRole.OWNER,
+    return (
+        await db.scalar(
+            select(func.count())
+            .select_from(WorkspaceMember)
+            .where(
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.role == WorkspaceRole.OWNER,
+            )
         )
-    ) or 0
+        or 0
+    )
 
 
 async def _require_member(
@@ -208,9 +211,7 @@ async def add_member(
         raise AlreadyMemberError(payload.email)
 
     db.add(
-        WorkspaceMember(
-            workspace_id=workspace_id, user_id=target.id, role=payload.role
-        )
+        WorkspaceMember(workspace_id=workspace_id, user_id=target.id, role=payload.role)
     )
     await db.commit()
     return MemberResponse(
@@ -291,5 +292,3 @@ async def remove_member(
     if membership is not None:
         await db.delete(membership)
     await db.commit()
-
-

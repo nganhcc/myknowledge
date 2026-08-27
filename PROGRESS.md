@@ -13,8 +13,7 @@
 ## Đang làm / Kế tiếp
 
 - [x] Workspaces API: CRUD + membership (role OWNER/ADMIN/MEMBER)
-- [ ] Documents API: upload file, dedup theo content_hash, storage adapter
-- [ ] Pipeline xử lý tài liệu (status PENDING → PROCESSING → READY/FAILED)
-- [ ] Chunking + embedding (pgvector) + Redis queue
-- [ ] Query API: retrieval + LLM streaming response kèm citations
+- [x] Documents API: upload file, dedup theo content_hash, storage adapter
+- [x] Pipeline xử lý tài liệu (status PENDING → PROCESSING → READY/FAILED)
+- [x] Chunking + embedding (pgvector) + Redis queue
 

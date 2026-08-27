@@ -16,7 +16,7 @@ class BaseParser(abc.ABC):
     @abc.abstractmethod
     def parse(self, content: bytes) -> list[tuple[str, int | None]]:
         """Phân tích nội dung tệp tin sang văn bản thô kèm số trang (nếu có).
-        
+
         Trả về một danh sách các tuple: (nội dung văn bản, số trang).
         """
 
@@ -72,7 +72,7 @@ class DocxParser(BaseParser):
 
 def get_parser(mime_type: str, filename: str) -> BaseParser:
     lower_name = filename.lower()
-    
+
     if mime_type == "text/plain" or lower_name.endswith(".txt"):
         return TextParser()
     elif mime_type == "text/markdown" or lower_name.endswith((".md", ".markdown")):

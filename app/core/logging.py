@@ -6,16 +6,16 @@ import structlog
 
 def setup_logging(json_logs: bool = False) -> None:
     """Cấu hình structlog kết hợp với thư viện standard logging của Python."""
-    
+
     # các processor xử lý dữ liệu log qua từng bước (pipeline)
     shared_processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,  # Nạp context ngầm (như request_id, user_id)
-        structlog.stdlib.add_logger_name,         # Thêm tên logger
-        structlog.stdlib.add_log_level,           # Thêm log level (info, error, ...)
+        structlog.stdlib.add_logger_name,  # Thêm tên logger
+        structlog.stdlib.add_log_level,  # Thêm log level (info, error, ...)
         structlog.stdlib.PositionalArgumentsFormatter(),
-        structlog.processors.TimeStamper(fmt="iso"), # Tự động thêm timestamp dạng ISO
+        structlog.processors.TimeStamper(fmt="iso"),  # Tự động thêm timestamp dạng ISO
         structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,     # Format exception traceback nếu có
+        structlog.processors.format_exc_info,  # Format exception traceback nếu có
     ]
 
     render_processor: structlog.processors.JSONRenderer | structlog.dev.ConsoleRenderer

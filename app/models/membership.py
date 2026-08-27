@@ -13,6 +13,7 @@ class WorkspaceRole(str, enum.Enum):
     ADMIN = "ADMIN"
     MEMBER = "MEMBER"
 
+
 class WorkspaceMember(Base):
     __tablename__ = "workspace_members"
 

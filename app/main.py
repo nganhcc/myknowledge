@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 import structlog
 from fastapi import FastAPI
 
-from app.api.v1 import auth, documents, workspaces
+from app.api.v1 import auth, chat, documents, workspaces
 from app.core.config import settings
 from app.core.logging import setup_logging
 
@@ -28,7 +28,7 @@ app = FastAPI(
 app.include_router(auth.router)
 app.include_router(workspaces.router)
 app.include_router(documents.router)
-
+app.include_router(chat.router)
 
 
 @app.get("/health", tags=["Health Check"])

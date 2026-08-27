@@ -6,11 +6,14 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = True
 
-    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/knowledge_base"
+    database_url: str = (
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/knowledge_base"
+    )
     redis_url: str = "redis://localhost:6379/0"
 
     gemini_api_key: str | None = None
     gemini_embedding_model: str = "text-embedding-004"
+    gemini_generation_model: str = "gemini-2.0-flash"
     max_document_retries: int = 3
 
     secret_key: str

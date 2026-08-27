@@ -44,9 +44,7 @@ async def _add_and_promote(
     assert promoted.status_code == 200, promoted.text
 
 
-async def _new_user(
-    client: AsyncClient, email: str
-) -> dict[str, str]:
+async def _new_user(client: AsyncClient, email: str) -> dict[str, str]:
     """Đăng ký + đăng nhập, trả về token và user id."""
     reg = await client.post(
         REGISTER_URL,
@@ -184,9 +182,7 @@ async def test_delete_forbidden_for_non_owner(client: AsyncClient) -> None:
     ws_id = (await _create_ws(client, owner["token"])).json()["id"]
     await _add_and_promote(client, owner["token"], ws_id, admin)
 
-    response = await client.delete(
-        f"{WS_URL}/{ws_id}", headers=_auth(admin["token"])
-    )
+    response = await client.delete(f"{WS_URL}/{ws_id}", headers=_auth(admin["token"]))
     still_there = await client.get(f"{WS_URL}/{ws_id}", headers=_auth(owner["token"]))
 
     # ADMIN đủ cao để đổi tên nhưng không được xoá workspace
@@ -340,6 +336,3 @@ async def test_create_workspace_invalid_name_422(client: AsyncClient) -> None:
 
     assert empty.status_code == 422
     assert missing.status_code == 422
-
-
-
