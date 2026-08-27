@@ -6,6 +6,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.models.document import Document, DocumentStatus
 from app.models.user import User
 from app.services.storage import BaseStorageService
@@ -200,7 +201,21 @@ async def process_document(
 
     except Exception as e:
         logger.exception("document_process_failed", document_id=document_id, error=str(e))
-        doc.status = DocumentStatus.FAILED
+        doc.retry_count += 1
+        if doc.retry_count >= settings.max_document_retries:
+            doc.status = DocumentStatus.FAILED
+            logger.error(
+                "document_permanently_failed",
+                document_id=document_id,
+                retry_count=doc.retry_count,
+            )
+        else:
+            doc.status = DocumentStatus.PENDING
+            logger.warning(
+                "document_will_retry",
+                document_id=document_id,
+                retry_count=doc.retry_count,
+                max_retries=settings.max_document_retries,
+            )
         await db.commit()
-        raise
 

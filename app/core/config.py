@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     gemini_api_key: str | None = None
     gemini_embedding_model: str = "text-embedding-004"
+    max_document_retries: int = 3
 
     secret_key: str
     algorithm: str = "HS256"
