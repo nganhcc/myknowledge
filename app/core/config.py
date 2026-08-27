@@ -6,7 +6,9 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = True
 
-    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/knowledge_base"
+    database_url: str = (
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/knowledge_base"
+    )
     redis_url: str = "redis://localhost:6379/0"
 
     gemini_api_key: str | None = None

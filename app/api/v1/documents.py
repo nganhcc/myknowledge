@@ -69,11 +69,13 @@ async def upload_document(
             file_content=content,
             mime_type=mime_type,
         )
-        
+
         # Chỉ đẩy vào queue xử lý nếu là tài liệu mới (PENDING)
         from app.models.document import DocumentStatus
+
         if doc.status == DocumentStatus.PENDING:
             from app.services.queue import enqueue_document_processing
+
             await enqueue_document_processing(str(doc.id))
 
     except (
@@ -85,9 +87,7 @@ async def upload_document(
     return DocumentResponse.model_validate(doc)
 
 
-@router.get(
-    "/{workspace_id}/documents", response_model=list[DocumentResponse]
-)
+@router.get("/{workspace_id}/documents", response_model=list[DocumentResponse])
 async def list_documents(
     workspace_id: uuid.UUID, current_user: UserDep, db: DbDep
 ) -> list[DocumentResponse]:

@@ -17,6 +17,7 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+
 def do_run_migrations(connection: Connection) -> None:
     context.configure(
         connection=connection,

@@ -82,10 +82,13 @@ def test_get_parser() -> None:
 
 # 2. Test Chunker
 def test_chunker() -> None:
-    pages: list[tuple[str, int | None]] = [("word1 word2 word3 word4", 1), ("word5 word6", 2)]
+    pages: list[tuple[str, int | None]] = [
+        ("word1 word2 word3 word4", 1),
+        ("word5 word6", 2),
+    ]
     # chunk_size=3, overlap=1
     chunks = chunk_document(pages, chunk_size=3, overlap=1)
-    
+
     assert len(chunks) == 3
     assert chunks[0].chunk_index == 0
     assert chunks[0].content == "word1 word2 word3"
@@ -173,9 +176,7 @@ async def test_process_document_pipeline() -> None:
 
         # Mock storage read_file
         mock_storage = MagicMock()
-        mock_storage.read_file = AsyncMock(
-            return_value=b"hello word chunking test"
-        )
+        mock_storage.read_file = AsyncMock(return_value=b"hello word chunking test")
 
         # Mock embedder
         mock_embeddings = [[0.5] * 768, [0.6] * 768]
@@ -236,9 +237,7 @@ async def test_process_document_retry_increments_count() -> None:
         await db.refresh(doc)
 
         mock_storage = MagicMock()
-        mock_storage.read_file = AsyncMock(
-            return_value=b"hello retry text"
-        )
+        mock_storage.read_file = AsyncMock(return_value=b"hello retry text")
 
         # Mock embed_texts to raise an exception
         with patch(
@@ -288,9 +287,7 @@ async def test_process_document_permanently_fails_after_max_retries() -> None:
         await db.refresh(doc)
 
         mock_storage = MagicMock()
-        mock_storage.read_file = AsyncMock(
-            return_value=b"hello fail text"
-        )
+        mock_storage.read_file = AsyncMock(return_value=b"hello fail text")
 
         # Mock embed_texts to raise an exception
         with patch(

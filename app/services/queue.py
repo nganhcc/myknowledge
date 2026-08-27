@@ -4,6 +4,7 @@ from app.core.config import settings
 
 DOCUMENT_QUEUE_KEY = "document_processing_queue"
 
+
 # queueing process_document id to redis queue
 async def enqueue_document_processing(document_id: str) -> None:
     """Đẩy ID tài liệu vào hàng đợi Redis để xử lý bất đồng bộ."""

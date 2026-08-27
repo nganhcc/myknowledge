@@ -146,13 +146,15 @@ async def process_document(
 ) -> None:
     """Quy trình xử lý tài liệu: đọc, parse, chunk, tạo embedding và lưu trữ."""
     logger = structlog.get_logger()
-    
+
     doc = await db.get(Document, document_id)
     if doc is None:
         raise DocumentNotFoundError(f"Document {document_id} not found")
 
     if doc.status != DocumentStatus.PENDING:
-        logger.info("document_process_skipped", document_id=document_id, status=doc.status)
+        logger.info(
+            "document_process_skipped", document_id=document_id, status=doc.status
+        )
         return
 
     doc.status = DocumentStatus.PROCESSING
@@ -165,20 +167,24 @@ async def process_document(
 
         # 2. Parse tài liệu tùy theo định dạng
         from app.services.parser import get_parser
+
         parser = get_parser(doc.mime_type, doc.filename)
         parsed_pages = parser.parse(file_content)
 
         # 3. Chia nhỏ văn bản (Chunking)
         from app.services.chunker import chunk_document
+
         chunks = chunk_document(parsed_pages)
 
         # 4. Tạo embeddings & lưu
         if chunks:
             from app.services.embedder import embed_texts
+
             texts = [c.content for c in chunks]
             embeddings = await embed_texts(texts)
 
             from app.models.chunk import DocumentChunk
+
             db_chunks = [
                 DocumentChunk(
                     document_id=doc.id,
@@ -200,7 +206,9 @@ async def process_document(
         logger.info("document_process_success", document_id=document_id)
 
     except Exception as e:
-        logger.exception("document_process_failed", document_id=document_id, error=str(e))
+        logger.exception(
+            "document_process_failed", document_id=document_id, error=str(e)
+        )
         doc.retry_count += 1
         if doc.retry_count >= settings.max_document_retries:
             doc.status = DocumentStatus.FAILED
@@ -218,4 +226,3 @@ async def process_document(
                 max_retries=settings.max_document_retries,
             )
         await db.commit()
-

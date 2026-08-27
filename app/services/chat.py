@@ -1,22 +1,20 @@
-import enum
-import time
 import json
+import time
 import uuid
 from collections.abc import AsyncGenerator
-from typing import Any
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
 import structlog
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.conversation import Conversation
 from app.models.message import Message, MessageRole
 from app.models.usage_log import UsageLog
 from app.models.user import User
-from app.services.retrieval import RetrievedChunk, retrieve_chunks
 from app.services.embedder import embed_texts
+from app.services.retrieval import RetrievedChunk, retrieve_chunks
 from app.services.workspace import get_workspace
 
 logger = structlog.get_logger()
@@ -24,12 +22,10 @@ logger = structlog.get_logger()
 
 class ConversationNotFoundError(Exception):
     """Conversation not found or access denied."""
-    pass
 
 
 class ChatServiceError(Exception):
     """Base exception for Chat Service errors."""
-    pass
 
 
 SYSTEM_PROMPT = (
@@ -184,26 +180,23 @@ async def chat_non_streaming(
     contents = []
     for msg in history_messages:
         role = "user" if msg.role == MessageRole.USER else "model"
-        contents.append({
-            "role": role,
-            "parts": [{"text": msg.content}]
-        })
+        contents.append({"role": role, "parts": [{"text": msg.content}]})
 
     # Append current turn with context
-    contents.append({
-        "role": "user",
-        "parts": [{"text": f"Context:\n{context_text}\n\nQuestion: {question}"}]
-    })
+    contents.append(
+        {
+            "role": "user",
+            "parts": [{"text": f"Context:\n{context_text}\n\nQuestion: {question}"}],
+        }
+    )
 
     # 4. Generate answer via Gemini REST API
     payload = {
-        "systemInstruction": {
-            "parts": [{"text": SYSTEM_PROMPT}]
-        },
+        "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
         "contents": contents,
         "generationConfig": {
             "temperature": 0.2,
-        }
+        },
     }
 
     url = (
@@ -214,8 +207,14 @@ async def chat_non_streaming(
     async with httpx.AsyncClient() as client:
         response = await client.post(url, json=payload, timeout=45.0)
         if response.status_code != 200:
-            logger.error("gemini_generation_api_failed", status_code=response.status_code, body=response.text)
-            raise ChatServiceError(f"Gemini API returned status {response.status_code}: {response.text}")
+            logger.error(
+                "gemini_generation_api_failed",
+                status_code=response.status_code,
+                body=response.text,
+            )
+            raise ChatServiceError(
+                f"Gemini API returned status {response.status_code}: {response.text}"
+            )
 
         data = response.json()
         try:
@@ -232,12 +231,14 @@ async def chat_non_streaming(
     # 5. Build citations
     citations = []
     for idx, c in enumerate(chunks, 1):
-        citations.append({
-            "chunk_id": str(c.chunk_id),
-            "document_id": str(c.document_id),
-            "document_name": c.document_title,
-            "page": c.page_number,
-        })
+        citations.append(
+            {
+                "chunk_id": str(c.chunk_id),
+                "document_id": str(c.document_id),
+                "document_name": c.document_title,
+                "page": c.page_number,
+            }
+        )
 
     # 6. Save messages & log usage
     _, assistant_msg = await save_chat_messages(
@@ -265,7 +266,7 @@ async def chat_streaming(
     workspace_id: uuid.UUID,
     conversation_id: uuid.UUID | None,
     question: str,
-) -> AsyncGenerator[str, None]:
+) -> AsyncGenerator[str]:
     """Execute streaming RAG chat. Yields SSE events formatted as strings."""
     start_time = time.perf_counter()
     api_key = settings.gemini_api_key
@@ -280,7 +281,7 @@ async def chat_streaming(
     except ConversationNotFoundError as e:
         yield f"event: error\ndata: {json.dumps({'detail': str(e)})}\n\n"
         return
-    except Exception as e:
+    except Exception:
         yield f"event: error\ndata: {json.dumps({'detail': 'Workspace access denied'})}\n\n"
         return
 
@@ -308,12 +309,14 @@ async def chat_streaming(
     # Yield citation list immediately
     citations = []
     for idx, c in enumerate(chunks, 1):
-        citations.append({
-            "chunk_id": str(c.chunk_id),
-            "document_id": str(c.document_id),
-            "document_name": c.document_title,
-            "page": c.page_number,
-        })
+        citations.append(
+            {
+                "chunk_id": str(c.chunk_id),
+                "document_id": str(c.document_id),
+                "document_name": c.document_title,
+                "page": c.page_number,
+            }
+        )
     yield f"event: citations\ndata: {json.dumps({'citations': citations})}\n\n"
 
     # 3. Formulate history turns
@@ -327,25 +330,22 @@ async def chat_streaming(
     contents = []
     for msg in history_messages:
         role = "user" if msg.role == MessageRole.USER else "model"
-        contents.append({
-            "role": role,
-            "parts": [{"text": msg.content}]
-        })
+        contents.append({"role": role, "parts": [{"text": msg.content}]})
 
-    contents.append({
-        "role": "user",
-        "parts": [{"text": f"Context:\n{context_text}\n\nQuestion: {question}"}]
-    })
+    contents.append(
+        {
+            "role": "user",
+            "parts": [{"text": f"Context:\n{context_text}\n\nQuestion: {question}"}],
+        }
+    )
 
     # 4. Stream response from Gemini streamGenerateContent API
     payload = {
-        "systemInstruction": {
-            "parts": [{"text": SYSTEM_PROMPT}]
-        },
+        "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
         "contents": contents,
         "generationConfig": {
             "temperature": 0.2,
-        }
+        },
     }
 
     url = (
@@ -359,10 +359,16 @@ async def chat_streaming(
 
     try:
         async with httpx.AsyncClient() as client:
-            async with client.stream("POST", url, json=payload, timeout=45.0) as response:
+            async with client.stream(
+                "POST", url, json=payload, timeout=45.0
+            ) as response:
                 if response.status_code != 200:
                     body = await response.aread()
-                    logger.error("gemini_stream_api_failed", status_code=response.status_code, body=body.decode())
+                    logger.error(
+                        "gemini_stream_api_failed",
+                        status_code=response.status_code,
+                        body=body.decode(),
+                    )
                     yield f"event: error\ndata: {json.dumps({'detail': f'Gemini Stream API failed: {response.status_code}'})}\n\n"
                     return
 
@@ -375,7 +381,9 @@ async def chat_streaming(
 
                         # Extract text
                         try:
-                            text_chunk = chunk_data["candidates"][0]["content"]["parts"][0]["text"]
+                            text_chunk = chunk_data["candidates"][0]["content"][
+                                "parts"
+                            ][0]["text"]
                             answer_parts.append(text_chunk)
                             yield f"event: token\ndata: {json.dumps({'token': text_chunk})}\n\n"
                         except (KeyError, IndexError):
@@ -386,7 +394,9 @@ async def chat_streaming(
                         if "usageMetadata" in chunk_data:
                             meta = chunk_data["usageMetadata"]
                             input_tokens = meta.get("promptTokenCount", input_tokens)
-                            output_tokens = meta.get("candidatesTokenCount", output_tokens)
+                            output_tokens = meta.get(
+                                "candidatesTokenCount", output_tokens
+                            )
 
     except Exception as e:
         logger.exception("streaming_exception")
@@ -400,7 +410,7 @@ async def chat_streaming(
         _, assistant_msg = await save_chat_messages(
             db, conversation.id, question, answer, citations
         )
-    except Exception as e:
+    except Exception:
         logger.exception("failed_to_save_chat_messages")
         yield f"event: error\ndata: {json.dumps({'detail': 'Failed to save conversation messages'})}\n\n"
         return

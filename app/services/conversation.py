@@ -12,7 +12,6 @@ from app.services.workspace import get_workspace
 
 class ConversationNotFoundError(Exception):
     """Conversation not found or access denied."""
-    pass
 
 
 async def list_conversations(

@@ -10,7 +10,6 @@ from httpx import ASGITransport, AsyncClient
 from app.db.session import async_session_factory
 from app.main import app
 from app.models.chunk import DocumentChunk
-from app.models.conversation import Conversation
 from app.models.document import Document, DocumentStatus
 from app.models.message import Message
 
@@ -114,7 +113,7 @@ async def test_chat_streaming_and_history_success(client: AsyncClient) -> None:
     # Since httpx.AsyncClient.stream is a context manager, we need a special mock
     mock_response = MagicMock()
     mock_response.status_code = 200
-    
+
     # Simulate line-by-line streaming of SSE chunks from Gemini
     sse_lines = [
         b'data: {"candidates": [{"content": {"parts": [{"text": "FastAPI"}]}}]}',
@@ -122,7 +121,7 @@ async def test_chat_streaming_and_history_success(client: AsyncClient) -> None:
         b'data: {"candidates": [{"content": {"parts": [{"text": " fast."}]}}]}',
         b'data: {"usageMetadata": {"promptTokenCount": 20, "candidatesTokenCount": 5}}',
     ]
-    
+
     async def aiter_lines() -> AsyncIterator[str]:
         for line in sse_lines:
             yield line.decode("utf-8")
@@ -132,6 +131,7 @@ async def test_chat_streaming_and_history_success(client: AsyncClient) -> None:
     class AsyncContextManagerMock:
         async def __aenter__(self):
             return mock_response
+
         async def __aexit__(self, exc_type, exc, tb):
             pass
 
@@ -147,7 +147,9 @@ async def test_chat_streaming_and_history_success(client: AsyncClient) -> None:
             "workspace_id": ws_id,
             "message": "What is FastAPI?",
         }
-        response = await client.post(CHAT_URL, json=payload, headers=_auth(user1["token"]))
+        response = await client.post(
+            CHAT_URL, json=payload, headers=_auth(user1["token"])
+        )
         assert response.status_code == 200, response.text
         assert response.headers["content-type"].startswith("text/event-stream")
 
@@ -161,7 +163,7 @@ async def test_chat_streaming_and_history_success(client: AsyncClient) -> None:
 
         # 6. Verify SSE events structure
         assert len(events) >= 4
-        
+
         # Verify conversation event
         assert events[0][0] == "conversation"
         assert "conversation_id" in events[0][1]
@@ -187,13 +189,18 @@ async def test_chat_streaming_and_history_success(client: AsyncClient) -> None:
     # 7. Check if messages were correctly saved in the DB
     async with async_session_factory() as db:
         messages = (
-            await db.execute(
-                pytest.importorskip("sqlalchemy").select(Message)
-                .where(Message.conversation_id == uuid.UUID(conv_id))
-                .order_by(Message.created_at.asc())
+            (
+                await db.execute(
+                    pytest.importorskip("sqlalchemy")
+                    .select(Message)
+                    .where(Message.conversation_id == uuid.UUID(conv_id))
+                    .order_by(Message.created_at.asc())
+                )
             )
-        ).scalars().all()
-        
+            .scalars()
+            .all()
+        )
+
         assert len(messages) == 2
         assert messages[0].role == "USER"
         assert messages[0].content == "What is FastAPI?"
@@ -247,18 +254,20 @@ async def test_chat_workspace_isolation(client: AsyncClient) -> None:
         "workspace_id": ws_id,
         "message": "Hello Alice's workspace?",
     }
-    
+
     with patch("app.core.config.settings.gemini_api_key", "test-api-key"):
         # Bob should get error or forbidden
-        response = await client.post(CHAT_URL, json=payload, headers=_auth(user2["token"]))
+        response = await client.post(
+            CHAT_URL, json=payload, headers=_auth(user2["token"])
+        )
         assert response.status_code == 200
-        
+
         # Bob consumes the stream - it should stream an error event containing "Workspace access denied" or "Workspace not found"
         lines = []
         async for line in response.aiter_lines():
             if line.strip():
                 lines.append(line)
-                
+
         events = parse_sse_events(lines)
         assert len(events) == 1
         assert events[0][0] == "error"

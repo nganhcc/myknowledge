@@ -44,4 +44,3 @@ class MemberResponse(BaseModel):
     role: WorkspaceRole
 
     model_config = ConfigDict(from_attributes=True)
-

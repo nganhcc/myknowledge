@@ -31,7 +31,6 @@ app.include_router(documents.router)
 app.include_router(chat.router)
 
 
-
 @app.get("/health", tags=["Health Check"])
 async def health_check() -> dict[str, str]:
     logger.info("health_check_called", status="ok")

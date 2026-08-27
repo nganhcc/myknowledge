@@ -12,7 +12,7 @@ class EmbeddingError(Exception):
 
 async def embed_texts(texts: list[str]) -> list[list[float]]:
     """Tạo embedding cho danh sách các đoạn văn bản sử dụng Gemini API.
-    
+
     Mỗi lượt gọi API giới hạn tối đa 100 phần tử để tránh quá tải payload.
     """
     if not texts:
