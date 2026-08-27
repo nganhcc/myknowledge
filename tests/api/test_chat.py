@@ -58,7 +58,7 @@ async def _create_ws(client: AsyncClient, token: str, name: str = "My WS"):
     return res.json()["id"]
 
 
-def parse_sse_events(lines: list[str]) -> list[tuple[str, Any]]:
+def parse_sse_events(lines: list[str]) -> list[tuple[str | None, Any]]:
     """Helper to parse SSE events from lines."""
     events = []
     current_event = None
