@@ -7,8 +7,9 @@ import structlog
 
 from app.core.config import settings
 from app.db.session import async_session_factory
+from app.models.document import Document, DocumentStatus
 from app.services.document import process_document
-from app.services.queue import DOCUMENT_QUEUE_KEY
+from app.services.queue import DOCUMENT_QUEUE_KEY, enqueue_document_processing
 from app.services.storage import LocalStorageService
 
 logger = structlog.get_logger()
@@ -59,6 +60,10 @@ async def worker_loop() -> None:
                 # Mỗi công việc chạy trong một DB session độc lập
                 async with async_session_factory() as db:
                     await process_document(db, storage, document_id)
+                    doc = await db.get(Document, document_id)
+                    if doc and doc.status == DocumentStatus.PENDING:
+                        await enqueue_document_processing(str(document_id))
+                        logger.info("worker_job_requeued", document_id=document_id, retry_count=doc.retry_count)
 
                 logger.info("worker_job_completed", document_id=document_id)
         except asyncio.CancelledError:
