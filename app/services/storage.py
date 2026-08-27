@@ -13,6 +13,10 @@ class BaseStorageService(ABC):
     async def delete_file(self, storage_key: str)-> bool:
         """Xoá file"""
 
+    @abstractmethod
+    async def read_file(self, storage_key: str) -> bytes:
+        """Đọc nội dung file"""
+
 class LocalStorageService(BaseStorageService):
     def __init__(self, base_dir: str = "./storage"):
         self.base_dir= base_dir
@@ -31,3 +35,9 @@ class LocalStorageService(BaseStorageService):
             os.remove(storage_key)
             return True
         return False
+
+    async def read_file(self, storage_key: str) -> bytes:
+        if not os.path.exists(storage_key):
+            raise FileNotFoundError(f"File not found: {storage_key}")
+        async with aiofiles.open(storage_key, 'rb') as f:
+            return await f.read()

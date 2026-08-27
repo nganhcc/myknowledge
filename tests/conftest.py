@@ -3,6 +3,7 @@ import os
 import sys
 from collections.abc import Iterator
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -89,3 +90,10 @@ def clean_tables() -> Iterator[None]:
     """Xoá toàn bộ dữ liệu giữa các test để cô lập từng test."""
     yield
     asyncio.run(_truncate_all())
+
+
+@pytest.fixture(autouse=True)
+def mock_enqueue():
+    """Mock Redis enqueueing to prevent connection errors during tests."""
+    with patch("app.services.queue.enqueue_document_processing", AsyncMock()) as mock:
+        yield mock

@@ -69,6 +69,13 @@ async def upload_document(
             file_content=content,
             mime_type=mime_type,
         )
+        
+        # Chỉ đẩy vào queue xử lý nếu là tài liệu mới (PENDING)
+        from app.models.document import DocumentStatus
+        if doc.status == DocumentStatus.PENDING:
+            from app.services.queue import enqueue_document_processing
+            await enqueue_document_processing(str(doc.id))
+
     except (
         workspace_service.WorkspaceNotFoundError,
         workspace_service.NotWorkspaceMemberError,
