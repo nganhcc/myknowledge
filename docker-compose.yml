@@ -14,6 +14,22 @@ services:
     command: >-
       sh -c "uv run --no-dev alembic upgrade head
       && uv run --no-dev uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    volumes:
+      - storage_data:/app/storage
+
+  worker:
+    build: .
+    command: uv run --no-dev python -m app.worker
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - storage_data:/app/storage
+    restart: unless-stopped
 
   postgres:
     image: pgvector/pgvector:pg16
@@ -43,3 +59,4 @@ services:
 
 volumes:
   postgres_data:
+  storage_data:

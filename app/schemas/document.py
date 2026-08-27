@@ -17,3 +17,11 @@ class DocumentResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentStatusResponse(BaseModel):
+    id: UUID
+    status: DocumentStatus
+    retry_count: int
+
+    model_config = ConfigDict(from_attributes=True)
