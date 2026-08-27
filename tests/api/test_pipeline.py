@@ -164,6 +164,7 @@ async def test_process_document_pipeline() -> None:
             status=DocumentStatus.PENDING,
             storage_key="/tmp/test.txt",
             content_hash="somehash",
+            retry_count=0,
             created_by=user.id,
         )
         db.add(doc)
@@ -198,3 +199,106 @@ async def test_process_document_pipeline() -> None:
             assert len(chunks) > 0
             assert chunks[0].content is not None
             assert chunks[0].embedding == [0.5] * 768
+
+
+@pytest.mark.asyncio
+async def test_process_document_retry_increments_count() -> None:
+    async with async_session_factory() as db:
+        from app.models.user import User
+        from app.models.workspace import Workspace
+
+        user = User(
+            email="test_retry@example.com",
+            password_hash="hash",
+            name="Retry User",
+        )
+        db.add(user)
+        await db.flush()
+
+        ws = Workspace(name="Retry Workspace", created_by=user.id)
+        db.add(ws)
+        await db.flush()
+
+        doc = Document(
+            workspace_id=ws.id,
+            title="test_retry.txt",
+            filename="test_retry.txt",
+            mime_type="text/plain",
+            size=11,
+            status=DocumentStatus.PENDING,
+            storage_key="/tmp/test_retry.txt",
+            content_hash="retryhash",
+            retry_count=0,
+            created_by=user.id,
+        )
+        db.add(doc)
+        await db.commit()
+        await db.refresh(doc)
+
+        mock_storage = MagicMock()
+        mock_storage.read_file = AsyncMock(
+            return_value=b"hello retry text"
+        )
+
+        # Mock embed_texts to raise an exception
+        with patch(
+            "app.services.embedder.embed_texts",
+            AsyncMock(side_effect=Exception("Embedding API error")),
+        ):
+            await process_document(db, mock_storage, doc.id)
+
+            await db.refresh(doc)
+            assert doc.status == DocumentStatus.PENDING
+            assert doc.retry_count == 1
+
+
+@pytest.mark.asyncio
+async def test_process_document_permanently_fails_after_max_retries() -> None:
+    async with async_session_factory() as db:
+        from app.models.user import User
+        from app.models.workspace import Workspace
+        from app.core.config import settings
+
+        user = User(
+            email="test_fail@example.com",
+            password_hash="hash",
+            name="Fail User",
+        )
+        db.add(user)
+        await db.flush()
+
+        ws = Workspace(name="Fail Workspace", created_by=user.id)
+        db.add(ws)
+        await db.flush()
+
+        doc = Document(
+            workspace_id=ws.id,
+            title="test_fail.txt",
+            filename="test_fail.txt",
+            mime_type="text/plain",
+            size=11,
+            status=DocumentStatus.PENDING,
+            storage_key="/tmp/test_fail.txt",
+            content_hash="failhash",
+            retry_count=settings.max_document_retries - 1,
+            created_by=user.id,
+        )
+        db.add(doc)
+        await db.commit()
+        await db.refresh(doc)
+
+        mock_storage = MagicMock()
+        mock_storage.read_file = AsyncMock(
+            return_value=b"hello fail text"
+        )
+
+        # Mock embed_texts to raise an exception
+        with patch(
+            "app.services.embedder.embed_texts",
+            AsyncMock(side_effect=Exception("Embedding API error")),
+        ):
+            await process_document(db, mock_storage, doc.id)
+
+            await db.refresh(doc)
+            assert doc.status == DocumentStatus.FAILED
+            assert doc.retry_count == settings.max_document_retries
