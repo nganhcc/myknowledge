@@ -46,6 +46,10 @@ async def _override_get_db():
 
 app.dependency_overrides[get_db] = _override_get_db
 
+import app.db.session as db_session
+
+db_session.async_session_factory = TestSession
+
 
 def _run_alembic_upgrade() -> None:
     cfg = Config(str(ROOT / "alembic.ini"))
