@@ -138,7 +138,7 @@ async def write_usage_log(
         )
         db.add(log)
         await db.commit()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.error("failed_to_write_usage_log", error=str(e))
 
 
@@ -281,7 +281,7 @@ async def chat_streaming(
     except ConversationNotFoundError as e:
         yield f"event: error\ndata: {json.dumps({'detail': str(e)})}\n\n"
         return
-    except Exception:
+    except Exception:  # noqa: BLE001
         yield f"event: error\ndata: {json.dumps({'detail': 'Workspace access denied'})}\n\n"
         return
 
@@ -294,7 +294,7 @@ async def chat_streaming(
         if not embeddings:
             raise ChatServiceError("Failed to embed question")
         query_embedding = embeddings[0]
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         yield f"event: error\ndata: {json.dumps({'detail': f'Embedding error: {e}'})}\n\n"
         return
 
@@ -302,7 +302,7 @@ async def chat_streaming(
     try:
         chunks = await retrieve_chunks(db, workspace_id, query_embedding, top_k=5)
         context_text = build_context(chunks)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         yield f"event: error\ndata: {json.dumps({'detail': f'Retrieval error: {e}'})}\n\n"
         return
 
@@ -358,10 +358,9 @@ async def chat_streaming(
     output_tokens = 0
 
     try:
-        async with httpx.AsyncClient() as client:
-            async with client.stream(
-                "POST", url, json=payload, timeout=45.0
-            ) as response:
+        async with httpx.AsyncClient() as client, client.stream(
+            "POST", url, json=payload, timeout=45.0
+        ) as response:
                 if response.status_code != 200:
                     body = await response.aread()
                     logger.error(
