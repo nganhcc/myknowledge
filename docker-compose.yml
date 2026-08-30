@@ -1,6 +1,8 @@
 services:
   app:
-    build: .
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     env_file:
@@ -21,7 +23,9 @@ services:
       - storage_data:/app/storage
 
   worker:
-    build: .
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     command: uv run --no-dev python -m app.worker
     env_file:
       - .env

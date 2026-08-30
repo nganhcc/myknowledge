@@ -57,6 +57,6 @@ When working on the project:
 
 ## Gotchas
 
-- Model registry lives in `app/models/__init__.py`. Do NOT import models into `app/db/base.py`: importing models there creates a circular import at app startup (`app.main -> app.api.* -> app.models.* -> app.db.base -> app.models.*` fails because the target class is still partially defined).
-- `settings = Settings()  # type: ignore[call-arg]` in `app/core/config.py` looks removable but is NOT: `secret_key` has no default, yet pydantic-settings does not surface it in the `__init__` signature that mypy sees. Removing the ignore causes mypy error "Missing named argument secret_key". Verified empirically — keep the ignore.
+- Model registry lives in `backend/app/models/__init__.py`. Do NOT import models into `backend/app/db/base.py`: importing models there creates a circular import at app startup (`app.main -> app.api.* -> app.models.* -> app.db.base -> app.models.*` fails because the target class is still partially defined).
+- `settings = Settings()  # type: ignore[call-arg]` in `backend/app/core/config.py` looks removable but is NOT: `secret_key` has no default, yet pydantic-settings does not surface it in the `__init__` signature that mypy sees. Removing the ignore causes mypy error "Missing named argument secret_key". Verified empirically — keep the ignore.
 - Tests require Postgres running locally (`docker compose up -d postgres`); without it pytest dies with INTERNALERROR from asyncpg connection refused on :5432.

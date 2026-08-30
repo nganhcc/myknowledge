@@ -42,19 +42,23 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-          cache-dependency-glob: "uv.lock"
+          cache-dependency-glob: "backend/uv.lock"
 
       - name: Sync dependencies
+        working-directory: backend
         run: uv sync --frozen
 
       - name: Lint (ruff)
+        working-directory: backend
         run: uv run ruff check .
 
       - name: Type check (mypy)
+        working-directory: backend
         run: uv run mypy .
 
       - name: Unit tests (pytest)
+        working-directory: backend
         run: uv run pytest
 
       - name: Docker build
-        run: docker build -t myknowledge:ci .
+        run: docker build -t myknowledge:ci ./backend

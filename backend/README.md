@@ -13,9 +13,18 @@ AI-powered document intelligence and RAG platform.
 
 ## Development
 
-docker compose up -d
+From the repository root:
 
+```bash
+docker compose up -d
+```
+
+To run the API directly:
+
+```bash
+cd backend
 uv run uvicorn app.main:app --reload
+```
 
 ## Health Check
 
