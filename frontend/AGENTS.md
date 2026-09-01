@@ -34,6 +34,10 @@ If backend behavior differs from `openapi.json`, report the discrepancy instead 
 - Chat uses `POST /api/v1/chat` with Server-Sent Events. Do not use native
   `EventSource`; use `fetch()` because the endpoint requires POST and an
   Authorization header.
+- The backend has NO CORS middleware (verified). In development, route all API
+  calls same-origin through the Vite dev proxy in `vite.config.ts` (`/api`,
+  `/health` → `http://localhost:8000`). A cross-origin direct call to the
+  backend will be blocked by the browser.
 
 ## Development rules
 
