@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This proect implements a multi-tenant Retrieval-Augmented Generation (RAG) platform that enables users to upload documents, ask queries, and receive streaming answers with precise source citations.
+This project implements a multi-tenant Retrieval-Augmented Generation (RAG) platform that enables users to upload documents, ask queries, and receive streaming answers with precise source citations.
 
 ## Engineering Principles
 
@@ -54,6 +54,12 @@ When working on the project:
 - Never retry failures blindly. Read the failure evidence first.
 - Fix the root cause instead of masking or weakening tests.
 - Never weaken tests just to make CI green.
+
+## Frontend isolation
+
+- For tasks scoped to `frontend/`, follow the more specific `frontend/AGENTS.md`.
+- Treat `frontend/openapi.json` as the primary API contract.
+- Do not inspect or modify `backend/` for frontend-only work unless the contract is insufficient or the user explicitly requests backend inspection.
 
 ## Gotchas
 
