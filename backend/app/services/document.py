@@ -209,6 +209,12 @@ async def process_document(
         logger.exception(
             "document_process_failed", document_id=document_id, error=str(e)
         )
+        # A failed flush/commit leaves the session unusable until it is rolled back.
+        # Reload the document after rollback because rollback expires ORM state.
+        await db.rollback()
+        doc = await db.get(Document, document_id)
+        if doc is None:
+            raise DocumentNotFoundError(f"Document {document_id} not found") from e
         doc.retry_count += 1
         if doc.retry_count >= settings.max_document_retries:
             doc.status = DocumentStatus.FAILED
