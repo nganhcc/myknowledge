@@ -2,6 +2,7 @@ import httpx
 import structlog
 
 from app.core.config import settings
+from app.core.constants import EMBEDDING_DIMENSION
 
 logger = structlog.get_logger()
 
@@ -25,8 +26,9 @@ async def embed_texts(texts: list[str]) -> list[list[float]]:
     # API endpoint cho batchEmbedContents
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{settings.gemini_embedding_model}:batchEmbedContents?key={api_key}"
+        f"{settings.gemini_embedding_model}:batchEmbedContents"
     )
+    headers = {"x-goog-api-key": api_key}
 
     batch_size = 100
     all_embeddings: list[list[float]] = []
@@ -38,13 +40,14 @@ async def embed_texts(texts: list[str]) -> list[list[float]]:
                 {
                     "model": f"models/{settings.gemini_embedding_model}",
                     "content": {"parts": [{"text": text}]},
+                    "embedContentConfig": {"outputDimensionality": EMBEDDING_DIMENSION},
                 }
                 for text in batch
             ]
 
             try:
                 response = await client.post(
-                    url, json={"requests": requests}, timeout=30.0
+                    url, headers=headers, json={"requests": requests}, timeout=30.0
                 )
                 if response.status_code != 200:
                     logger.error(
@@ -64,7 +67,20 @@ async def embed_texts(texts: list[str]) -> list[list[float]]:
                     )
 
                 for emb in embeddings_data:
-                    all_embeddings.append(emb["values"])
+                    values = emb.get("values")
+                    if (
+                        not isinstance(values, list)
+                        or len(values) != EMBEDDING_DIMENSION
+                    ):
+                        actual_dimension = (
+                            len(values) if isinstance(values, list) else 0
+                        )
+                        raise EmbeddingError(
+                            "Gemini returned an embedding with "
+                            f"{actual_dimension} dimensions; expected "
+                            f"{EMBEDDING_DIMENSION}"
+                        )
+                    all_embeddings.append(values)
 
             except Exception as e:
                 if not isinstance(e, EmbeddingError):

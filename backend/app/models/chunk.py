@@ -6,6 +6,7 @@ from sqlalchemy import DateTime, ForeignKey, Integer, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.constants import EMBEDDING_DIMENSION
 from app.db.base import Base
 
 
@@ -29,7 +30,9 @@ class DocumentChunk(Base):
         "metadata", JSONB, default=dict, server_default="{}"
     )
 
-    embedding: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
+    embedding: Mapped[list[float] | None] = mapped_column(
+        Vector(EMBEDDING_DIMENSION), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
