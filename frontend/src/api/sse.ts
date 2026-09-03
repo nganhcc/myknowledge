@@ -46,12 +46,17 @@ function dispatchFrame(frame: SseFrame, callbacks: ChatStreamCallbacks): boolean
   }
 
   if (event === "done") {
-    const payload = JSON.parse(data) as {
-      message_id?: string;
-      total_tokens?: number;
-    };
-    callbacks.onDone(payload.message_id ?? "", payload.total_tokens ?? 0);
-    return true;
+    try {
+      const payload = JSON.parse(data) as {
+        message_id?: string;
+        total_tokens?: number;
+      };
+      callbacks.onDone(payload.message_id ?? "", payload.total_tokens ?? 0);
+      return true;
+    } catch {
+      callbacks.onError("Received an invalid completion event.");
+      return true;
+    }
   }
 
   if (event === "error") {
@@ -160,7 +165,9 @@ export async function streamChat(
       );
     }
 
-    if (!finished) {
+    if (!finished) callbacks.onUnexpectedEnd?.();
+  } catch (error) {
+    if (!(error instanceof DOMException && error.name === "AbortError")) {
       callbacks.onUnexpectedEnd?.();
     }
   } finally {
