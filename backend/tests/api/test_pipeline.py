@@ -2,6 +2,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.core.config import settings
+from app.core.constants import EMBEDDING_DIMENSION
 from app.db.session import async_session_factory
 from app.models.chunk import DocumentChunk
 from app.models.document import Document, DocumentStatus
@@ -120,9 +122,32 @@ async def test_embed_texts_success() -> None:
             assert res[1] == [0.2] * 768
 
             args, kwargs = mock_post.call_args
-            assert "text-embedding-004" in args[0]
-            assert "key=test-key" in args[0]
+            assert settings.gemini_embedding_model in args[0]
+            assert "key=" not in args[0]
+            assert kwargs["headers"] == {"x-goog-api-key": "test-key"}
             assert len(kwargs["json"]["requests"]) == 2
+            assert (
+                kwargs["json"]["requests"][0]["embedContentConfig"][
+                    "outputDimensionality"
+                ]
+                == EMBEDDING_DIMENSION
+            )
+
+
+@pytest.mark.asyncio
+async def test_embed_texts_rejects_unexpected_dimension() -> None:
+    with patch("app.core.config.settings.gemini_api_key", "test-key"):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "embeddings": [{"values": [0.1] * (EMBEDDING_DIMENSION + 1)}]
+        }
+
+        with (
+            patch("httpx.AsyncClient.post", return_value=mock_response),
+            pytest.raises(EmbeddingError, match="expected 768"),
+        ):
+            await embed_texts(["text1"])
 
 
 @pytest.mark.asyncio
