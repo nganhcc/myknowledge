@@ -12,8 +12,8 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     gemini_api_key: str | None = None
-    gemini_embedding_model: str = "text-embedding-004"
-    gemini_generation_model: str = "gemini-2.0-flash"
+    gemini_embedding_model: str = "gemini-embedding-2"
+    gemini_generation_model: str = "gemini-3.6-flash"
     max_document_retries: int = 3
 
     secret_key: str
