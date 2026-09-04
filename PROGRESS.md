@@ -49,7 +49,7 @@ Cache retrieval results, not complete LLM responses:
 
 Use a Redis fixed-window counter:
 
-- [ ] Limit chat requests to 20 requests per minute per user
-- [ ] Limit uploads to 10 requests per minute per user
-- [ ] Return a clear rate-limit response with retry information
-- [ ] Add tests for window boundaries, separate users, and separate endpoints
+- [x] Limit chat requests to 20 requests per minute per user
+- [x] Limit uploads to 10 requests per minute per user
+- [x] Return a clear rate-limit response with retry information
+- [x] Add tests for window boundaries, separate users, and separate endpoints

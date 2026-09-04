@@ -10,6 +10,10 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://postgres:postgres@localhost:5432/knowledge_base"
     )
     redis_url: str = "redis://localhost:6379/0"
+    rate_limit_key_prefix: str = "rate-limit"
+    chat_rate_limit: int = 20
+    upload_rate_limit: int = 10
+    rate_limit_window_seconds: int = 60
     retrieval_cache_enabled: bool = True
     retrieval_cache_ttl_seconds: int = 300
     retrieval_cache_key_prefix: str = "retrieval"
