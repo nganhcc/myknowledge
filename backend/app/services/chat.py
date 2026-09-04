@@ -36,6 +36,12 @@ SYSTEM_PROMPT = (
     "Do not make up facts or use outside knowledge."
 )
 
+QUERY_REWRITE_PROMPT = (
+    "Rewrite the user's latest question as a standalone search query using the conversation "
+    "history. Resolve references such as 'it', 'that one', or 'the second one'. Return only "
+    "the rewritten query, with no explanation."
+)
+
 
 def build_context(chunks: list[RetrievedChunk]) -> str:
     """Format chunks as plain text context with Source tags."""
@@ -142,6 +148,81 @@ async def write_usage_log(
         logger.error("failed_to_write_usage_log", error=str(e))
 
 
+async def _rewrite_query(
+    question: str,
+    history_messages: list[Message],
+    api_key: str,
+) -> str:
+    if not history_messages:
+        return question
+
+    history_text = "\n".join(
+        f"{message.role.value}: {message.content}" for message in history_messages
+    )
+    payload = {
+        "systemInstruction": {"parts": [{"text": QUERY_REWRITE_PROMPT}]},
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {
+                        "text": (
+                            f"Conversation history:\n{history_text}\n\n"
+                            f"Latest question: {question}"
+                        )
+                    }
+                ],
+            }
+        ],
+        "generationConfig": {"temperature": 0.0},
+    }
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{settings.gemini_generation_model}:generateContent"
+    )
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                url, headers={"x-goog-api-key": api_key}, json=payload, timeout=30.0
+            )
+        if response.status_code != 200:
+            raise ChatServiceError(f"Query rewrite API returned {response.status_code}")
+        rewritten = response.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+        return rewritten or question
+    except Exception as error:  # noqa: BLE001
+        logger.warning("query_rewrite_failed_using_original", error=str(error))
+        return question
+
+
+async def prepare_chat_context(
+    db: AsyncSession,
+    workspace_id: uuid.UUID,
+    conversation: Conversation,
+    question: str,
+    api_key: str,
+) -> tuple[list[RetrievedChunk], str, list[Message]]:
+    """Prepare bounded history and hybrid context for either chat transport."""
+    stmt = (
+        select(Message)
+        .where(Message.conversation_id == conversation.id)
+        .order_by(Message.created_at.desc())
+        .limit(settings.query_rewrite_history_limit)
+    )
+    history_messages = list(reversed((await db.execute(stmt)).scalars().all()))
+    rewritten_query = await _rewrite_query(question, history_messages, api_key)
+    embeddings = await embed_texts([rewritten_query])
+    if not embeddings:
+        raise ChatServiceError("Failed to embed question")
+    chunks = await retrieve_chunks(
+        db,
+        workspace_id,
+        embeddings[0],
+        top_k=settings.retrieval_final_limit,
+        query=rewritten_query,
+    )
+    return chunks, build_context(chunks), history_messages
+
+
 async def chat_non_streaming(
     db: AsyncSession,
     actor: User,
@@ -159,23 +240,10 @@ async def chat_non_streaming(
         db, actor, workspace_id, conversation_id, question
     )
 
-    # 1. Embed question
-    embeddings = await embed_texts([question])
-    if not embeddings:
-        raise ChatServiceError("Failed to embed question")
-    query_embedding = embeddings[0]
-
-    # 2. Retrieve context chunks
-    chunks = await retrieve_chunks(db, workspace_id, query_embedding, top_k=5)
-    context_text = build_context(chunks)
-
-    # 3. Formulate history turns
-    stmt = (
-        select(Message)
-        .where(Message.conversation_id == conversation.id)
-        .order_by(Message.created_at.asc())
+    # 1. Rewrite, embed, retrieve, and load bounded history.
+    chunks, context_text, history_messages = await prepare_chat_context(
+        db, workspace_id, conversation, question, api_key
     )
-    history_messages = (await db.execute(stmt)).scalars().all()
 
     contents = []
     for msg in history_messages:
@@ -190,7 +258,7 @@ async def chat_non_streaming(
         }
     )
 
-    # 4. Generate answer via Gemini REST API
+    # 2. Generate answer via Gemini REST API
     payload = {
         "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
         "contents": contents,
@@ -288,22 +356,13 @@ async def chat_streaming(
     # Yield first event: conversation details
     yield f"event: conversation\ndata: {json.dumps({'conversation_id': str(conversation.id), 'title': conversation.title})}\n\n"
 
-    # 1. Embed question
+    # 1. Rewrite, embed, retrieve, and load bounded history.
     try:
-        embeddings = await embed_texts([question])
-        if not embeddings:
-            raise ChatServiceError("Failed to embed question")
-        query_embedding = embeddings[0]
+        chunks, context_text, history_messages = await prepare_chat_context(
+            db, workspace_id, conversation, question, api_key
+        )
     except Exception as e:  # noqa: BLE001
         yield f"event: error\ndata: {json.dumps({'detail': f'Embedding error: {e}'})}\n\n"
-        return
-
-    # 2. Retrieve context chunks
-    try:
-        chunks = await retrieve_chunks(db, workspace_id, query_embedding, top_k=5)
-        context_text = build_context(chunks)
-    except Exception as e:  # noqa: BLE001
-        yield f"event: error\ndata: {json.dumps({'detail': f'Retrieval error: {e}'})}\n\n"
         return
 
     # Yield citation list immediately
@@ -319,14 +378,6 @@ async def chat_streaming(
         )
     yield f"event: citations\ndata: {json.dumps({'citations': citations})}\n\n"
 
-    # 3. Formulate history turns
-    stmt = (
-        select(Message)
-        .where(Message.conversation_id == conversation.id)
-        .order_by(Message.created_at.asc())
-    )
-    history_messages = (await db.execute(stmt)).scalars().all()
-
     contents = []
     for msg in history_messages:
         role = "user" if msg.role == MessageRole.USER else "model"
@@ -339,7 +390,7 @@ async def chat_streaming(
         }
     )
 
-    # 4. Stream response from Gemini streamGenerateContent API
+    # 2. Stream response from Gemini streamGenerateContent API
     payload = {
         "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
         "contents": contents,

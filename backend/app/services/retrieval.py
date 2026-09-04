@@ -1,11 +1,13 @@
 import uuid
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.models.chunk import DocumentChunk
 from app.models.document import Document
+from app.services.reranker import rerank_chunks
 
 
 @dataclass
@@ -18,34 +20,117 @@ class RetrievedChunk:
     score: float
 
 
+@dataclass
+class RetrievalCandidate:
+    chunk: RetrievedChunk
+    vector_rank: int | None = None
+    lexical_rank: int | None = None
+    fused_score: float = 0.0
+
+
+def reciprocal_rank_fusion(
+    vector_chunks: list[RetrievedChunk],
+    lexical_chunks: list[RetrievedChunk],
+    rrf_k: int = 60,
+) -> list[RetrievedChunk]:
+    """Merge ranked results without comparing incompatible raw scores."""
+    candidates: dict[uuid.UUID, RetrievalCandidate] = {}
+    for rank, chunk in enumerate(vector_chunks, 1):
+        candidate = candidates.setdefault(chunk.chunk_id, RetrievalCandidate(chunk))
+        candidate.vector_rank = rank
+        candidate.fused_score += 1.0 / (rrf_k + rank)
+    for rank, chunk in enumerate(lexical_chunks, 1):
+        candidate = candidates.setdefault(chunk.chunk_id, RetrievalCandidate(chunk))
+        candidate.lexical_rank = rank
+        candidate.fused_score += 1.0 / (rrf_k + rank)
+
+    return [
+        candidate.chunk
+        for candidate in sorted(
+            candidates.values(),
+            key=lambda item: (-item.fused_score, str(item.chunk.chunk_id)),
+        )
+    ]
+
+
+def _chunk_from_row(chunk: DocumentChunk, title: str, score: float) -> RetrievedChunk:
+    return RetrievedChunk(
+        chunk_id=chunk.id,
+        document_id=chunk.document_id,
+        document_title=title,
+        content=chunk.content,
+        page_number=chunk.page_number,
+        score=score,
+    )
+
+
+async def _vector_candidates(
+    db: AsyncSession,
+    workspace_id: uuid.UUID,
+    query_embedding: list[float],
+    limit: int,
+) -> list[RetrievedChunk]:
+    distance = DocumentChunk.embedding.cosine_distance(query_embedding)
+    stmt = (
+        select(DocumentChunk, Document.title, distance)
+        .join(Document, DocumentChunk.document_id == Document.id)
+        .where(
+            DocumentChunk.workspace_id == workspace_id,
+            DocumentChunk.embedding.is_not(None),
+        )
+        .order_by(distance, DocumentChunk.id)
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    return [
+        _chunk_from_row(chunk, title, 1.0 - (distance or 1.0))
+        for chunk, title, distance in result.all()
+    ]
+
+
+async def _lexical_candidates(
+    db: AsyncSession,
+    workspace_id: uuid.UUID,
+    query: str,
+    limit: int,
+) -> list[RetrievedChunk]:
+    query_text = query.strip()
+    if not query_text:
+        return []
+    ts_query = func.websearch_to_tsquery(settings.retrieval_fts_config, query_text)
+    rank = func.ts_rank_cd(DocumentChunk.content_search, ts_query)
+    stmt = (
+        select(DocumentChunk, Document.title, rank)
+        .join(Document, DocumentChunk.document_id == Document.id)
+        .where(
+            DocumentChunk.workspace_id == workspace_id,
+            DocumentChunk.content_search.op("@@")(ts_query),
+        )
+        .order_by(rank.desc(), DocumentChunk.id)
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    return [_chunk_from_row(chunk, title, score) for chunk, title, score in result.all()]
+
+
 async def retrieve_chunks(
     db: AsyncSession,
     workspace_id: uuid.UUID,
     query_embedding: list[float],
     top_k: int = 5,
+    query: str = "",
 ) -> list[RetrievedChunk]:
-    """Retrieve top_k document chunks similar to query_embedding within the workspace."""
-    distance = DocumentChunk.embedding.cosine_distance(query_embedding)
-    stmt = (
-        select(DocumentChunk, Document.title, distance)
-        .join(Document, DocumentChunk.document_id == Document.id)
-        .where(DocumentChunk.workspace_id == workspace_id)
-        .order_by(distance)
-        .limit(top_k)
+    """Return hybrid vector/FTS results, ordered by reciprocal rank fusion."""
+    candidate_limit = max(top_k, settings.retrieval_candidate_limit)
+    vector_chunks = await _vector_candidates(
+        db, workspace_id, query_embedding, candidate_limit
     )
-    result = await db.execute(stmt)
-
-    retrieved = []
-    for chunk, title, dist in result.all():
-        score = 1.0 - (dist if dist is not None else 1.0)
-        retrieved.append(
-            RetrievedChunk(
-                chunk_id=chunk.id,
-                document_id=chunk.document_id,
-                document_title=title,
-                content=chunk.content,
-                page_number=chunk.page_number,
-                score=score,
-            )
-        )
-    return retrieved
+    lexical_chunks = await _lexical_candidates(
+        db, workspace_id, query, candidate_limit
+    )
+    fused_chunks = reciprocal_rank_fusion(
+        vector_chunks,
+        lexical_chunks,
+        settings.retrieval_rrf_k,
+    )[:candidate_limit]
+    return await rerank_chunks(query, fused_chunks, top_k)
