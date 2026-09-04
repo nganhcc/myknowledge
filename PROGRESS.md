@@ -8,7 +8,7 @@
 - [x] Test infrastructure: isolated test database, automatic migrations, and cleanup between tests
 - [x] CI pipeline: Ruff, mypy, pytest, and Docker build
 - [x] Review fixes: registration race condition, EmailStr validation, Docker health checks,
-	  JWT claims, and duplicate logging handlers
+         JWT claims, and duplicate logging handlers
 - [x] Workspaces API: CRUD operations and membership management (OWNER/ADMIN/MEMBER)
 - [x] Documents API: file uploads, content-hash deduplication, and storage adapter
 - [x] Document processing pipeline: PENDING -> PROCESSING -> READY/FAILED
@@ -20,6 +20,35 @@
 
 ## Next
 
-- [ ] Evaluate recall@50 before reranking versus precision@5 after reranking
-- [ ] Benchmark local reranker latency, memory usage, and cold-start behavior
-- [ ] Add broader database-backed tests for full-text search and reranking
+### RAG Evaluation
+
+- [ ] Create a small dataset of 20-30 questions with `question`, `ground_truth`,
+  and `expected_sources`
+- [ ] Measure retrieval recall
+- [ ] Measure citation accuracy
+- [ ] Measure answer correctness with a simple LLM judge or manual review
+- [ ] Measure context relevance
+- [ ] Write a lightweight evaluation script; RAGAS is optional
+- [ ] Compare results before and after hybrid retrieval and reranking
+- [ ] Add the quantitative results to the README as evidence of improvement
+
+### Redis Retrieval Caching
+
+Cache retrieval results, not complete LLM responses:
+
+`query -> normalize -> hash -> Redis -> cache hit? -> result or retrieval`
+
+- [ ] Normalize retrieval queries consistently
+- [ ] Hash the normalized query with workspace and retrieval settings included
+- [ ] Cache and deserialize retrieved chunk results with a TTL
+- [ ] Invalidate or version cache entries when the workspace documents change
+- [ ] Add cache-hit and cache-miss metrics/logging
+
+### Simple Rate Limiting
+
+Use a Redis fixed-window counter:
+
+- [ ] Limit chat requests to 20 requests per minute per user
+- [ ] Limit uploads to 10 requests per minute per user
+- [ ] Return a clear rate-limit response with retry information
+- [ ] Add tests for window boundaries, separate users, and separate endpoints
