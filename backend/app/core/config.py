@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     gemini_embedding_model: str = "gemini-embedding-2"
     gemini_generation_model: str = "gemini-3.6-flash"
     max_document_retries: int = 3
+    retrieval_candidate_limit: int = 50
+    retrieval_final_limit: int = 5
+    retrieval_rrf_k: int = 60
+    retrieval_fts_config: str = "simple"
+    query_rewrite_history_limit: int = 6
+    reranker_enabled: bool = True
+    reranker_model: str = "BAAI/bge-reranker-base"
 
     secret_key: str
     algorithm: str = "HS256"
