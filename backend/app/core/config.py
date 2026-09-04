@@ -10,6 +10,9 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://postgres:postgres@localhost:5432/knowledge_base"
     )
     redis_url: str = "redis://localhost:6379/0"
+    retrieval_cache_enabled: bool = True
+    retrieval_cache_ttl_seconds: int = 300
+    retrieval_cache_key_prefix: str = "retrieval"
 
     gemini_api_key: str | None = None
     gemini_embedding_model: str = "gemini-embedding-2"

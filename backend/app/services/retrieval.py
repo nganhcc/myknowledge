@@ -1,23 +1,24 @@
 import uuid
 from dataclasses import dataclass
 
+import structlog
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.chunk import DocumentChunk
 from app.models.document import Document
+from app.models.workspace import Workspace
 from app.services.reranker import rerank_chunks
+from app.services.retrieval_cache import (
+    cache_key,
+    get_chunks,
+    normalize_query,
+    set_chunks,
+)
+from app.services.retrieval_types import RetrievedChunk
 
-
-@dataclass
-class RetrievedChunk:
-    chunk_id: uuid.UUID
-    document_id: uuid.UUID
-    document_title: str
-    content: str
-    page_number: int | None
-    score: float
+logger = structlog.get_logger()
 
 
 @dataclass
@@ -121,16 +122,40 @@ async def retrieve_chunks(
     query: str = "",
 ) -> list[RetrievedChunk]:
     """Return hybrid vector/FTS results, ordered by reciprocal rank fusion."""
+    normalized_query = normalize_query(query)
+    workspace_version = await db.scalar(
+        select(Workspace.retrieval_version).where(Workspace.id == workspace_id)
+    )
+    if workspace_version is None:
+        raise ValueError(f"Workspace {workspace_id} not found")
+    key = cache_key(workspace_id, workspace_version, normalized_query, top_k)
+    if settings.retrieval_cache_enabled:
+        try:
+            cached = await get_chunks(key)
+        except Exception as error:  # noqa: BLE001
+            logger.warning("retrieval_cache_error", operation="get", error=str(error))
+        else:
+            if cached is not None:
+                logger.info("retrieval_cache_hit", workspace_id=str(workspace_id))
+                return cached
+            logger.info("retrieval_cache_miss", workspace_id=str(workspace_id))
+
     candidate_limit = max(top_k, settings.retrieval_candidate_limit)
     vector_chunks = await _vector_candidates(
         db, workspace_id, query_embedding, candidate_limit
     )
     lexical_chunks = await _lexical_candidates(
-        db, workspace_id, query, candidate_limit
+        db, workspace_id, normalized_query, candidate_limit
     )
     fused_chunks = reciprocal_rank_fusion(
         vector_chunks,
         lexical_chunks,
         settings.retrieval_rrf_k,
     )[:candidate_limit]
-    return await rerank_chunks(query, fused_chunks, top_k)
+    chunks = await rerank_chunks(normalized_query, fused_chunks, top_k)
+    if settings.retrieval_cache_enabled:
+        try:
+            await set_chunks(key, chunks)
+        except Exception as error:  # noqa: BLE001
+            logger.warning("retrieval_cache_error", operation="set", error=str(error))
+    return chunks

@@ -39,11 +39,11 @@ Cache retrieval results, not complete LLM responses:
 
 `query -> normalize -> hash -> Redis -> cache hit? -> result or retrieval`
 
-- [ ] Normalize retrieval queries consistently
-- [ ] Hash the normalized query with workspace and retrieval settings included
-- [ ] Cache and deserialize retrieved chunk results with a TTL
-- [ ] Invalidate or version cache entries when the workspace documents change
-- [ ] Add cache-hit and cache-miss metrics/logging
+- [x] Normalize retrieval queries consistently
+- [x] Hash the normalized query with workspace and retrieval settings included
+- [x] Cache and deserialize retrieved chunk results with a TTL
+- [x] Invalidate or version cache entries when the workspace documents change
+- [x] Add cache-hit and cache-miss metrics/logging
 
 ### Simple Rate Limiting
 

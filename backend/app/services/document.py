@@ -3,12 +3,13 @@ import uuid
 from collections.abc import Sequence
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.document import Document, DocumentStatus
 from app.models.user import User
+from app.models.workspace import Workspace
 from app.services.storage import BaseStorageService
 from app.services.workspace import WorkspaceForbiddenError, get_workspace
 
@@ -136,6 +137,11 @@ async def delete_document(
     # Xóa file vật lý và bản ghi DB
     await storage.delete_file(doc.storage_key)
     await db.delete(doc)
+    await db.execute(
+        update(Workspace)
+        .where(Workspace.id == workspace_id)
+        .values(retrieval_version=Workspace.retrieval_version + 1)
+    )
     await db.commit()
 
 
@@ -202,6 +208,11 @@ async def process_document(
 
         # 5. Cập nhật trạng thái thành công
         doc.status = DocumentStatus.READY
+        await db.execute(
+            update(Workspace)
+            .where(Workspace.id == doc.workspace_id)
+            .values(retrieval_version=Workspace.retrieval_version + 1)
+        )
         await db.commit()
         logger.info("document_process_success", document_id=document_id)
 
