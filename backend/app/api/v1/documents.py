@@ -6,17 +6,17 @@ Includes validation, error mappings to HTTP statuses, and permission checks.
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.api.deps import get_current_user, get_storage_service
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.document import DocumentResponse, DocumentStatusResponse
 from app.services import document as document_service
+from app.services import rate_limit as rate_limit_service
 from app.services import workspace as workspace_service
 from app.services.storage import BaseStorageService
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix=f"{settings.api_v1_prefix}/workspaces", tags=["documents"])
 
@@ -55,6 +55,19 @@ async def upload_document(
     storage: StorageDep,
     file: UploadFile = File(...),  # noqa: B008
 ) -> DocumentResponse:
+    try:
+        await rate_limit_service.check_rate_limit(
+            endpoint="upload",
+            user_id=current_user.id,
+            limit=settings.upload_rate_limit,
+        )
+    except rate_limit_service.RateLimitExceeded as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Upload rate limit exceeded. Retry in {exc.retry_after_seconds} seconds.",
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from None
+
     try:
         content = await file.read()
         filename = file.filename or "unnamed"

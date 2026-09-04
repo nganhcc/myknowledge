@@ -1,22 +1,18 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.chat import (
-    ChatRequest,
-    ConversationResponse,
-    MessageResponse,
-)
+from app.schemas.chat import ChatRequest, ConversationResponse, MessageResponse
 from app.services import chat as chat_service
 from app.services import conversation as conversation_service
+from app.services import rate_limit as rate_limit_service
 from app.services import workspace as workspace_service
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(tags=["chat"])
 
@@ -49,6 +45,19 @@ async def chat_stream(
     db: DbDep,
 ) -> StreamingResponse:
     """Stream chat response back to client using SSE."""
+    try:
+        await rate_limit_service.check_rate_limit(
+            endpoint="chat",
+            user_id=current_user.id,
+            limit=settings.chat_rate_limit,
+        )
+    except rate_limit_service.RateLimitExceeded as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Chat rate limit exceeded. Retry in {exc.retry_after_seconds} seconds.",
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from None
+
     return StreamingResponse(
         chat_service.chat_streaming(
             db=db,
