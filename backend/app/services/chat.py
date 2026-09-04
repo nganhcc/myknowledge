@@ -223,6 +223,65 @@ async def prepare_chat_context(
     return chunks, build_context(chunks), history_messages
 
 
+async def generate_answer(
+    question: str,
+    context_text: str,
+    history_messages: list[Message] | None = None,
+    api_key: str | None = None,
+) -> tuple[str, int, int]:
+    """Generate an answer without persisting application state."""
+    key = api_key or settings.gemini_api_key
+    if not key:
+        raise ChatServiceError("GEMINI_API_KEY is not configured")
+
+    contents = []
+    for msg in history_messages or []:
+        role = "user" if msg.role == MessageRole.USER else "model"
+        contents.append({"role": role, "parts": [{"text": msg.content}]})
+    contents.append(
+        {
+            "role": "user",
+            "parts": [{"text": f"Context:\n{context_text}\n\nQuestion: {question}"}],
+        }
+    )
+    payload = {
+        "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+        "contents": contents,
+        "generationConfig": {"temperature": 0.2},
+    }
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{settings.gemini_generation_model}:generateContent"
+    )
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            url, headers={"x-goog-api-key": key}, json=payload, timeout=45.0
+        )
+    if response.status_code != 200:
+        logger.error(
+            "gemini_generation_api_failed",
+            status_code=response.status_code,
+            body=response.text,
+        )
+        raise ChatServiceError(
+            f"Gemini API returned status {response.status_code}: {response.text}"
+        )
+
+    data = response.json()
+    try:
+        answer = data["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError):
+        logger.error("unexpected_gemini_response_structure", response=data)
+        raise ChatServiceError("Unexpected response structure from Gemini API")
+    usage_metadata = data.get("usageMetadata", {})
+    return (
+        answer,
+        usage_metadata.get("promptTokenCount", 0),
+        usage_metadata.get("candidatesTokenCount", 0),
+    )
+
+
 async def chat_non_streaming(
     db: AsyncSession,
     actor: User,
@@ -245,56 +304,10 @@ async def chat_non_streaming(
         db, workspace_id, conversation, question, api_key
     )
 
-    contents = []
-    for msg in history_messages:
-        role = "user" if msg.role == MessageRole.USER else "model"
-        contents.append({"role": role, "parts": [{"text": msg.content}]})
-
-    # Append current turn with context
-    contents.append(
-        {
-            "role": "user",
-            "parts": [{"text": f"Context:\n{context_text}\n\nQuestion: {question}"}],
-        }
-    )
-
     # 2. Generate answer via Gemini REST API
-    payload = {
-        "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-        "contents": contents,
-        "generationConfig": {
-            "temperature": 0.2,
-        },
-    }
-
-    url = (
-        "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{settings.gemini_generation_model}:generateContent?key={api_key}"
+    answer, input_tokens, output_tokens = await generate_answer(
+        question, context_text, history_messages, api_key
     )
-
-    async with httpx.AsyncClient() as client:
-        response = await client.post(url, json=payload, timeout=45.0)
-        if response.status_code != 200:
-            logger.error(
-                "gemini_generation_api_failed",
-                status_code=response.status_code,
-                body=response.text,
-            )
-            raise ChatServiceError(
-                f"Gemini API returned status {response.status_code}: {response.text}"
-            )
-
-        data = response.json()
-        try:
-            answer = data["candidates"][0]["content"]["parts"][0]["text"]
-        except (KeyError, IndexError):
-            logger.error("unexpected_gemini_response_structure", response=data)
-            raise ChatServiceError("Unexpected response structure from Gemini API")
-
-        # Parse usage details
-        usage_metadata = data.get("usageMetadata", {})
-        input_tokens = usage_metadata.get("promptTokenCount", 0)
-        output_tokens = usage_metadata.get("candidatesTokenCount", 0)
 
     # 5. Build citations
     citations = []

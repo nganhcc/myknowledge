@@ -1,0 +1,2 @@
+{"type":"metadata","version":"1"}
+{"case_id":"replace-me-01","question":"Replace this with a question answered by the evaluation workspace.","ground_truth":"Replace this with the reference answer.","expected_sources":[{"document":"document-title.pdf","page":1}],"answerable":true}
