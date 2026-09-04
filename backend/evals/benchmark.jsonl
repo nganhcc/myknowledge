@@ -1,0 +1,20 @@
+{"type":"metadata","version":"1"}
+{"case_id": "eo13694-01", "question": "Who signed Executive Order 13694 and on what date?", "expected_sources": [{"document": "cybersecurity.pdf", "page": 1}]}
+{"case_id": "eo13694-02", "question": "What is the official title of Executive Order 13694?", "expected_sources": [{"document": "cybersecurity.pdf", "page": 1}]}
+{"case_id": "eo13694-03", "question": "What legal authorities does the President invoke to issue this order?", "expected_sources": [{"document": "cybersecurity.pdf", "page": 1}]}
+{"case_id": "eo13694-04", "question": "According to Section 1(a)(ii)(B)-(D), who else can be designated for property blocking under this order?", "expected_sources": [{"document": "cybersecurity.pdf", "page": 2}]}
+{"case_id": "eo13694-05", "question": "What does Section 4 provide regarding entry into the United States for designated individuals?", "expected_sources": [{"document": "cybersecurity.pdf", "page": 2}]}
+{"case_id": "eo13694-06", "question": "What does Section 5 state about transactions that evade the order and about conspiracies to violate it?", "expected_sources": [{"document": "cybersecurity.pdf", "page": 2}]}
+{"case_id": "eo13694-07", "question": "According to Section 6(c), who is included in the definition of 'United States person'?", "expected_sources": [{"document": "cybersecurity.pdf", "page": 3}]}
+{"case_id": "eo13694-08", "question": "What document is referenced to define 'critical infrastructure sector' in Section 6(d)?", "expected_sources": [{"document": "cybersecurity.pdf", "page": 3}]}
+{"case_id": "eo13694-09", "question": "On what date was this order published in the Federal Register?", "expected_sources": [{"document": "cybersecurity.pdf", "page": 3}]}
+{"case_id": "eo14093-10", "question": "What is the title of Executive Order 14093, and who signed it?", "expected_sources": [{"document": "spyware.pdf", "page": 1}]}
+{"case_id": "eo14093-11", "question": "According to Section 1, what national security and foreign policy interests does the United States have regarding technology?", "expected_sources": [{"document": "spyware.pdf", "page": 1}]}
+{"case_id": "eo14093-12", "question": "What policy does the order establish regarding operational use of commercial spyware by the United States Government?", "expected_sources": [{"document": "spyware.pdf", "page": 1}, {"document": "spyware.pdf", "page": 2}]}
+{"case_id": "eo14093-13", "question": "Under Section 2(a)(i), what circumstances indicate that commercial spyware may pose counterintelligence or security risks to the United States Government?", "expected_sources": [{"document": "spyware.pdf", "page": 2}]}
+{"case_id": "eo14093-14", "question": "Under Section 2(a)(ii), what purposes of use by a foreign government or foreign person indicate that commercial spyware poses risks of improper use?", "expected_sources": [{"document": "spyware.pdf", "page": 2}, {"document": "spyware.pdf", "page": 3}]}
+{"case_id": "eo14093-15", "question": "What is the Director of National Intelligence required to do under Section 2(c) of the order?", "expected_sources": [{"document": "spyware.pdf", "page": 3}]}
+{"case_id": "eo14093-16", "question": "Under Section 2(f), who is required to certify that commercial spyware intended for operational use does not pose the risks described in Section 2(a)?", "expected_sources": [{"document": "spyware.pdf", "page": 4}]}
+{"case_id": "eo14093-17", "question": "What uses of commercial spyware are exempted from the operational-use prohibition under Section 2(l)?", "expected_sources": [{"document": "spyware.pdf", "page": 5}]}
+{"case_id": "eo14093-18", "question": "How does Section 5(b) define the term 'commercial spyware'?", "expected_sources": [{"document": "spyware.pdf", "page": 6}]}
+{"case_id": "eo14093-19", "question": "What does Section 6(d) state about whether the order creates any enforceable right or benefit?", "expected_sources": [{"document": "spyware.pdf", "page": 7}]}
