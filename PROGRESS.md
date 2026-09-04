@@ -22,13 +22,14 @@
 
 ### RAG Evaluation
 
-- [ ] Create a small dataset of 20-30 questions with `question`, `ground_truth`,
+- [x] Create a small dataset of 20-30 questions with `question`, `ground_truth`,
   and `expected_sources`
-- [ ] Measure retrieval recall
-- [ ] Measure citation accuracy
+- [x] Measure retrieval recall
+- [x] Add deterministic claim-level citation accuracy metrics
+- [ ] Run end-to-end evaluation against the benchmark workspace
 - [ ] Measure answer correctness with a simple LLM judge or manual review
 - [ ] Measure context relevance
-- [ ] Write a lightweight evaluation script; RAGAS is optional
+- [x] Add a lightweight end-to-end evaluation script; RAGAS remains optional
 - [ ] Compare results before and after hybrid retrieval and reranking
 - [ ] Add the quantitative results to the README as evidence of improvement
 

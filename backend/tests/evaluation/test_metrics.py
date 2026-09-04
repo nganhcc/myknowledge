@@ -5,6 +5,7 @@ from app.evaluation.metrics import (
     EvaluationCase,
     SourceReference,
     aggregate_results,
+    citation_metrics,
     evaluate_case,
 )
 from app.services.retrieval import RetrievedChunk
@@ -55,3 +56,31 @@ def test_aggregate_results_ignores_diagnostic_fields() -> None:
     ]
 
     assert aggregate_results(results) == {"cases": 2, "hit_at_1": 0.5}
+
+
+def test_citation_metrics_score_labels_against_expected_sources() -> None:
+    chunks = [_chunk("other.pdf", 1), _chunk("guide.pdf", 2)]
+
+    result = citation_metrics(
+        "The answer is supported [Source 2], with an invalid reference [Source 3].",
+        chunks,
+        (SourceReference("guide.pdf", 2),),
+    )
+
+    assert result["citation_count"] == 2
+    assert result["valid_citation_count"] == 1
+    assert result["invalid_citation_count"] == 1
+    assert result["citation_validity"] == 0.5
+    assert result["citation_precision"] == 1.0
+    assert result["citation_recall"] == 1.0
+
+
+def test_citation_metrics_detect_uncited_answer() -> None:
+    result = citation_metrics(
+        "The answer contains no source label.",
+        [_chunk("guide.pdf", 2)],
+        (SourceReference("guide.pdf", 2),),
+    )
+
+    assert result["uncited_answer"] == 1
+    assert result["citation_validity"] == 0.0

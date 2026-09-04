@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -19,6 +20,8 @@ class EvaluationCase:
     case_id: str
     question: str
     expected_sources: tuple[SourceReference, ...]
+    ground_truth: str | None = None
+    answerable: bool = True
 
 
 def source_matches(chunk: RetrievedChunk, reference: SourceReference) -> bool:
@@ -35,6 +38,41 @@ def _relevant_positions(
         position
         for position, chunk in enumerate(chunks, 1)
         if any(source_matches(chunk, reference) for reference in expected_sources)
+    }
+
+
+def citation_metrics(
+    answer: str,
+    retrieved_chunks: list[RetrievedChunk],
+    expected_sources: tuple[SourceReference, ...],
+) -> dict[str, Any]:
+    """Score source labels in an answer against retrieved and expected sources."""
+    labels = [
+        int(value)
+        for value in re.findall(r"\[Source\s+(\d+)\]", answer, re.IGNORECASE)
+    ]
+    valid_positions = [label for label in labels if 1 <= label <= len(retrieved_chunks)]
+    unique_positions = set(valid_positions)
+    expected_positions = {
+        position
+        for position in unique_positions
+        if any(
+            source_matches(retrieved_chunks[position - 1], reference)
+            for reference in expected_sources
+        )
+    }
+    return {
+        "citation_count": len(labels),
+        "valid_citation_count": len(valid_positions),
+        "invalid_citation_count": len(labels) - len(valid_positions),
+        "citation_validity": len(valid_positions) / len(labels) if labels else 0.0,
+        "citation_precision": (
+            len(expected_positions) / len(unique_positions) if unique_positions else 0.0
+        ),
+        "citation_recall": (
+            len(expected_positions) / len(expected_sources) if expected_sources else 0.0
+        ),
+        "uncited_answer": int(not labels),
     }
 
 
