@@ -208,3 +208,5 @@ docker-compose.yml
 ```
 
 The frontend API contract is [frontend/openapi.json](frontend/openapi.json).
+
+huhu
