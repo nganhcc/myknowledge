@@ -70,9 +70,9 @@ Check the API and open its documentation:
 curl http://localhost:8000/health
 ```
 
-- API: http://localhost:8000
-- Swagger UI: http://localhost:8000/docs
-- OpenAPI schema: http://localhost:8000/openapi.json
+- API: <http://localhost:8000>
+- Swagger UI: <http://localhost:8000/docs>
+- OpenAPI schema: <http://localhost:8000/openapi.json>
 
 Stop the services with:
 
@@ -115,7 +115,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. Vite proxies `/api/*` and `/health` to the backend
+Open <http://localhost:5173>. Vite proxies `/api/*` and `/health` to the backend
 at `http://localhost:8000`. Set `VITE_API_BASE_URL` in `frontend/.env` when the
 API runs on another origin. For a deployed frontend, set it to the full Render
 API URL and rebuild the frontend.
@@ -208,5 +208,3 @@ docker-compose.yml
 ```
 
 The frontend API contract is [frontend/openapi.json](frontend/openapi.json).
-
-huhu
